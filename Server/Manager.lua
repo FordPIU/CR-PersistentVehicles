@@ -90,4 +90,6 @@ RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
     local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
 
     Vehicles[GetVehicleUID(vehicle)] = nil
+
+    print("Vehicle " .. GetVehicleUID(vehicle) .. " has been forgotten")
 end)
