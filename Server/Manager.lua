@@ -1,5 +1,7 @@
 local Vehicles = {}
 
+--------------------------------------------------
+
 local function deleteAllPersistentVehicles()
     local vehicles = GetAllVehicles()
 
@@ -16,17 +18,7 @@ local function spawnAllPersistentVehicles()
     end
 end
 
-local function trimVehiclesJson(vehiclesJson)
-    local decodedVehicles = json.decode(vehiclesJson)
-
-    for vehicleUID, vehicleProperties in pairs(decodedVehicles) do
-        if vehicleProperties == false then
-            decodedVehicles[vehicleUID] = nil
-        end
-    end
-
-    return decodedVehicles
-end
+--------------------------------------------------
 
 function RefreshAndSpawn()
     deleteAllPersistentVehicles()
@@ -42,9 +34,7 @@ function SaveVehicleProperties(resourceName)
 end
 
 function IsVehiclePersistent(vehicle)
-    local vehicleUID = GetVehicleUID(vehicle)
-
-    if Vehicles[vehicleUID] then
+    if Vehicles[GetVehicleUID(vehicle)] then
         return true
     else
         return false
@@ -52,15 +42,17 @@ function IsVehiclePersistent(vehicle)
 end
 
 function NewVehiclePersistent(vehicle)
-    Vehicles[GetVehicleUID(vehicle)] = false
+    Vehicles[GetVehicleUID(vehicle)] = true
 end
+
+--------------------------------------------------
 
 AddEventHandler("onResourceStart", function(resourceName)
     if resourceName == GetCurrentResourceName() then
         local vehiclesJson = LoadResourceFile(resourceName, "vehicles.json")
 
         if vehiclesJson ~= nil then
-            Vehicles = trimVehiclesJson(vehiclesJson)
+            Vehicles = TrimVehiclesJson(vehiclesJson)
             print("Loaded vehicles.json")
         else
             warn("No file: vehicles.json")
