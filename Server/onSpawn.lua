@@ -8,6 +8,7 @@ AddEventHandler("entityCreated", function(entity)
 
         if DoesEntityExist(driver) and IsPedAPlayer(driver) then
             NewVehiclePersistent(entity)
+            Entity(entity).state.IsPersistent = true
         end
     end
 end)
