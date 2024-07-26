@@ -7,7 +7,7 @@ AddEventHandler("entityCreated", function(entity)
         local driver = GetPedInVehicleSeat(entity, -1)
 
         if DoesEntityExist(driver) and IsPedAPlayer(driver) then
-            Entity(entity).state.IsPersistent = true
+            NewVehiclePersistent(entity)
         end
     end
 end)

@@ -37,6 +37,10 @@ function IsVehiclePersistent(vehicle)
     end
 end
 
+function NewVehiclePersistent(vehicle)
+
+end
+
 AddEventHandler("onResourceStart", function(resourceName)
     if resourceName == GetCurrentResourceName() then
         RefreshAndSpawn()
