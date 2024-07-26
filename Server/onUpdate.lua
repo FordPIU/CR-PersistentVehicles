@@ -2,7 +2,7 @@ RegisterNetEvent("CR.PV:Update", function(vehicleNetId, properties)
     local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
 
     if DoesEntityExist(vehicle) then
-        if IsVehiclePersistent(vehicle) then
+        if IsVehiclePersistent(vehicle) and Entity(vehicle).state.NeedsPropertiesSet == nil then
             UpdateVehicleProperties(vehicle, properties)
         else
             warn("Attempt to update on non-persistent vehicle")

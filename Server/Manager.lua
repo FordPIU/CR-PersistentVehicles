@@ -14,7 +14,19 @@ end
 
 local function spawnAllPersistentVehicles()
     for vehicleUID, properties in pairs(Vehicles) do
-        print(vehicleUID, json.encode(properties))
+        local position = properties.matrix.position
+
+        local vehicle = CreateVehicleServerSetter(properties.model, properties.type, position.x, position.y, position.z,
+            properties.matrix.heading)
+
+        repeat
+            Wait(0)
+        until DoesEntityExist(vehicle)
+
+        Entity(vehicle).state.IsPersistent = true
+        Entity(vehicle).state.NeedsPropertiesSet = properties
+
+        print("Spawned " .. vehicleUID)
     end
 end
 
@@ -66,4 +78,16 @@ AddEventHandler("onResourceStop", function(resourceName)
     if resourceName == GetCurrentResourceName() then
         SaveVehicleProperties(resourceName)
     end
+end)
+
+RegisterNetEvent("CR.PV:PropertiesSet", function(vehicleNetId)
+    local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
+
+    Entity(vehicle).state.NeedsPropertiesSet = nil
+end)
+
+RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
+    local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
+
+    Vehicles[GetVehicleUID(vehicle)] = nil
 end)
