@@ -1,7 +1,22 @@
 local Vehicles = {}
 
-function RefreshAndSpawn()
+local function deleteAllPersistentVehicles()
+    local vehicles = GetAllVehicles()
 
+    for _, vehicle in pairs(vehicles) do
+        if IsVehiclePersistent(vehicle) then
+            DeleteEntity(vehicle)
+        end
+    end
+end
+
+local function spawnAllPersistentVehicles()
+
+end
+
+function RefreshAndSpawn()
+    deleteAllPersistentVehicles()
+    spawnAllPersistentVehicles()
 end
 
 function UpdateVehicleProperties(properties)
@@ -10,6 +25,16 @@ end
 
 function SaveVehicleProperties()
 
+end
+
+function IsVehiclePersistent(vehicle)
+    local vehicleUID = GetVehicleUID(vehicle)
+
+    if Vehicles[vehicleUID] then
+        return true
+    else
+        return false
+    end
 end
 
 AddEventHandler("onResourceStart", function(resourceName)
