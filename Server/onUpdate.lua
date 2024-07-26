@@ -3,7 +3,7 @@ RegisterNetEvent("CR.PV:Update", function(vehicleNetId, properties)
 
     if DoesEntityExist(vehicle) then
         if IsVehiclePersistent(vehicle) then
-            UpdateVehicleProperties(properties)
+            UpdateVehicleProperties(vehicle, properties)
         else
             warn("Attempt to update on non-persistent vehicle")
         end
