@@ -39,10 +39,11 @@ end
 
 function UpdateVehicleProperties(vehicle, properties)
     Vehicles[GetVehicleUID(vehicle)] = properties
+    SaveVehicleProperties()
 end
 
 function SaveVehicleProperties(resourceName)
-    SaveResourceFile(resourceName, "vehicles.json", json.encode(Vehicles), -1)
+    SaveResourceFile(resourceName or GetCurrentResourceName(), "vehicles.json", json.encode(Vehicles), -1)
 end
 
 function IsVehiclePersistent(vehicle)
@@ -84,6 +85,7 @@ RegisterNetEvent("CR.PV:PropertiesSet", function(vehicleNetId)
     local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
 
     Entity(vehicle).state.NeedsPropertiesSet = nil
+    SaveVehicleProperties()
 end)
 
 RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
@@ -92,4 +94,5 @@ RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
     Vehicles[GetVehicleUID(vehicle)] = nil
 
     print("Vehicle " .. GetVehicleUID(vehicle) .. " has been forgotten")
+    SaveVehicleProperties()
 end)
