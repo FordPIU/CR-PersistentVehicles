@@ -5,5 +5,6 @@ lua54 "yes"
 author "Caleb B."
 version "1.0.0"
 
+file 'vehicles.json'
 client_script 'Client/**/*.lua'
 server_script 'Server/**/*.lua'
