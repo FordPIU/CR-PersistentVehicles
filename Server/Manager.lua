@@ -1,4 +1,5 @@
 local Vehicles = {}
+local ServerTime = GetGameTimer()
 
 --------------------------------------------------
 
@@ -10,16 +11,6 @@ local function deleteAllPersistentVehicles()
             DeleteEntity(vehicle)
         end
     end
-end
-
-local function isVehicleSpawned(vehicleUID)
-    local vehicles = GetAllVehicles()
-
-    for _, vehicle in pairs(vehicles) do
-        if GetVehicleUID(vehicle) == vehicleUID then return true end
-    end
-
-    return false
 end
 
 local function spawnVehicle(vehicleUID, vehicleProperties)
@@ -36,16 +27,15 @@ local function spawnVehicle(vehicleUID, vehicleProperties)
 
     Entity(vehicle).state.IsPersistent = true
     Entity(vehicle).state.NeedsPropertiesSet = vehicleProperties
+    Entity(vehicle).state.PersistentServerTime = ServerTime
 
     print("Spawned " .. vehicleUID)
 end
 
 local function spawnAllPersistentVehicles()
     for vehicleUID, properties in pairs(Vehicles) do
-        if not isVehicleSpawned(vehicleUID) then
-            spawnVehicle(vehicleUID, properties)
-            Wait(500)
-        end
+        spawnVehicle(vehicleUID, properties)
+        Wait(500)
     end
 end
 
@@ -116,16 +106,6 @@ RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
     SaveVehicleProperties()
 end)
 
---------------------------------------------------
-
-Citizen.CreateThread(function()
-    while true do
-        Wait(1000)
-
-        for vehicleUID, _ in pairs(Vehicles) do
-            if not isVehicleSpawned(vehicleUID) then
-                spawnVehicle(vehicleUID)
-            end
-        end
-    end
+RegisterNetEvent("CR.PV:GetServerTime", function()
+    TriggerClientEvent("CR.PV:SetServerTime", source, ServerTime)
 end)
