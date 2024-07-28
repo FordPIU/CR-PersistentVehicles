@@ -36,13 +36,14 @@ local function spawnVehicle(vehicleUID, vehicleProperties)
 
     Entity(vehicle).state.IsPersistent = true
     Entity(vehicle).state.NeedsPropertiesSet = vehicleProperties
+
+    print("Spawned " .. vehicleUID)
 end
 
 local function spawnAllPersistentVehicles()
     for vehicleUID, properties in pairs(Vehicles) do
         if not isVehicleSpawned(vehicleUID) then
             spawnVehicle(vehicleUID, properties)
-            print("Spawned " .. vehicleUID)
             Wait(500)
         end
     end
