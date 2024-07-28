@@ -12,21 +12,39 @@ local function deleteAllPersistentVehicles()
     end
 end
 
+local function isVehicleSpawned(vehicleUID)
+    local vehicles = GetAllVehicles()
+
+    for _, vehicle in pairs(vehicles) do
+        if GetVehicleUID(vehicle) == vehicleUID then return true end
+    end
+
+    return false
+end
+
+local function spawnVehicle(vehicleUID, vehicleProperties)
+    vehicleProperties = vehicleProperties or Vehicles[vehicleUID]
+
+    local position = vehicleProperties.matrix.position
+    local vehicle = CreateVehicleServerSetter(vehicleProperties.model, vehicleProperties.type, position.x, position.y,
+        position.z,
+        vehicleProperties.matrix.heading)
+
+    repeat
+        Wait(0)
+    until DoesEntityExist(vehicle)
+
+    Entity(vehicle).state.IsPersistent = true
+    Entity(vehicle).state.NeedsPropertiesSet = vehicleProperties
+end
+
 local function spawnAllPersistentVehicles()
     for vehicleUID, properties in pairs(Vehicles) do
-        local position = properties.matrix.position
-
-        local vehicle = CreateVehicleServerSetter(properties.model, properties.type, position.x, position.y, position.z,
-            properties.matrix.heading)
-
-        repeat
-            Wait(0)
-        until DoesEntityExist(vehicle)
-
-        Entity(vehicle).state.IsPersistent = true
-        Entity(vehicle).state.NeedsPropertiesSet = properties
-
-        print("Spawned " .. vehicleUID)
+        if not isVehicleSpawned(vehicleUID) then
+            spawnVehicle(vehicleUID, properties)
+            print("Spawned " .. vehicleUID)
+            Wait(500)
+        end
     end
 end
 
@@ -95,4 +113,18 @@ RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
 
     print("Vehicle " .. GetVehicleUID(vehicle) .. " has been forgotten")
     SaveVehicleProperties()
+end)
+
+--------------------------------------------------
+
+Citizen.CreateThread(function()
+    while true do
+        Wait(1000)
+
+        for vehicleUID, _ in pairs(Vehicles) do
+            if not isVehicleSpawned(vehicleUID) then
+                spawnVehicle(vehicleUID)
+            end
+        end
+    end
 end)
