@@ -1,9 +1,9 @@
 local Vehicles = {}
-local ServerTime = GetGameTimer()
-
+local Deleting = false
 --------------------------------------------------
 
 local function deleteAllPersistentVehicles()
+    Deleting = true
     local vehicles = GetAllVehicles()
 
     for _, vehicle in pairs(vehicles) do
@@ -11,6 +11,7 @@ local function deleteAllPersistentVehicles()
             DeleteEntity(vehicle)
         end
     end
+    Deleting = false
 end
 
 local function spawnVehicle(vehicleUID, vehicleProperties)
@@ -27,7 +28,6 @@ local function spawnVehicle(vehicleUID, vehicleProperties)
 
     Entity(vehicle).state.IsPersistent = true
     Entity(vehicle).state.NeedsPropertiesSet = vehicleProperties
-    Entity(vehicle).state.PersistentServerTime = ServerTime
 
     print("Spawned " .. vehicleUID)
 end
@@ -80,13 +80,23 @@ AddEventHandler("onResourceStart", function(resourceName)
             warn("No file: vehicles.json")
         end
 
-        RefreshAndSpawn()
+        if not GlobalState.PersistentVehiclesSpawned then
+            RefreshAndSpawn()
+
+            GlobalState.PersistentVehiclesSpawned = true
+        end
     end
 end)
 
 AddEventHandler("onResourceStop", function(resourceName)
     if resourceName == GetCurrentResourceName() then
         SaveVehicleProperties(resourceName)
+    end
+end)
+
+AddEventHandler("entityRemoved", function(entity)
+    if not Deleting and Entity(entity).state.IsPersistent then
+        spawnVehicle(GetVehicleUID(entity))
     end
 end)
 
@@ -106,6 +116,10 @@ RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
     SaveVehicleProperties()
 end)
 
-RegisterNetEvent("CR.PV:GetServerTime", function()
-    TriggerClientEvent("CR.PV:SetServerTime", source, ServerTime)
-end)
+--------------------------------------------------
+
+RegisterCommand("rpvs", function()
+    GlobalState.PersistentVehiclesSpawned = false
+
+    print("Reset global state for Persistent Vehicles Spawned")
+end, false)
