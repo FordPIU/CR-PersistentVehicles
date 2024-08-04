@@ -24,6 +24,7 @@ Citizen.CreateThread(function()
                 -- This is just kinda ugly, fuck networking
                 SetVehicleProperties(veh, entityState.NeedsPropertiesSet)
                 TriggerServerEvent("CR.PV:PropertiesSet", NetworkGetNetworkIdFromEntity(veh))
+                print("Set properties for a persistent vehicle.")
             end
 
             -- Yay, merging code that already doesnt work so that more of it doesnt work
@@ -33,6 +34,7 @@ Citizen.CreateThread(function()
                 local vehicleProperties = GetVehicleProperties(veh)
 
                 TriggerServerEvent("CR.PV:Update", vehicleNetId, vehicleProperties)
+                print("Updated properties for a persistent vehicle.")
             end
 
             ::skip::
