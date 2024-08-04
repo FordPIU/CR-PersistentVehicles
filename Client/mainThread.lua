@@ -6,7 +6,7 @@ Citizen.CreateThread(function()
             local entityState = Entity(veh).state
 
             if not DoesEntityExist(veh) or IsEntityDead(veh) then -- I dont even know why they would be in the pool if they meet these conditions, but fivem
-                print("Hey, fivem is fucking stupid")
+                warn("FiveM is fucking stupid and attempted to tick on a entity that is dead or doesnt even exist. Coolio.")
                 goto skip
             end
 
