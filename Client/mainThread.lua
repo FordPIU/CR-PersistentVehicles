@@ -1,12 +1,13 @@
 Citizen.CreateThread(function()
     while true do
-        -- 1 TPS
-        Wait(1000)
+        Wait(1000) -- 1 TPS
 
         for _, veh in pairs(GetGamePool("CVehicle")) do
+            local entityState = Entity(veh).state
+
             -- Updated properties for vehicles that server says needs it
             -- I honestly hate this method but too far along and too tired.
-            if Entity(veh).state.NeedsPropertiesSet ~= nil then
+            if entityState.NeedsPropertiesSet ~= nil then
                 -- Safeguard to make sure no issues with fivems shit networking happens
                 if not NetworkHasControlOfEntity(veh) then
                     repeat
@@ -16,8 +17,17 @@ Citizen.CreateThread(function()
                 end
 
                 -- This is just kinda ugly, fuck networking
-                SetVehicleProperties(veh, Entity(veh).state.NeedsPropertiesSet)
+                SetVehicleProperties(veh, entityState.NeedsPropertiesSet)
                 TriggerServerEvent("CR.PV:PropertiesSet", NetworkGetNetworkIdFromEntity(veh))
+            end
+
+            -- Yay, merging code that already doesnt work so that more of it doesnt work
+            -- I wonder why I keep burning out
+            if entityState.IsPersistent and NetworkHasControlOfEntity(veh) then
+                local vehicleNetId = NetworkGetNetworkIdFromEntity(veh)
+                local vehicleProperties = GetVehicleProperties(veh)
+
+                TriggerServerEvent("CR.PV:Update", vehicleNetId, vehicleProperties)
             end
         end
     end
