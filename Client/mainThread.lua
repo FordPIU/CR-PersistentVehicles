@@ -1,6 +1,6 @@
 Citizen.CreateThread(function()
     while true do
-        Wait(1000) -- 1 TPS
+        Wait(500) -- 2 TPS
 
         for _, veh in pairs(GetGamePool("CVehicle")) do
             local entityState = Entity(veh).state
