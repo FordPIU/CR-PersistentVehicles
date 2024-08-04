@@ -1,4 +1,4 @@
 Config = {
-    SpawnDistance = 250,
-    DespawnDistance = 250
+    SpawnDistance = 500,
+    DespawnDistance = 500
 }

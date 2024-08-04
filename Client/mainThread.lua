@@ -1,7 +1,7 @@
 local Vehicles = {}
 
 local function updateTick(vehicle)
-    TriggerServerEvent("CR.PV:Update", NetworkGetNetworkIdFromEntity(vehicle))
+    TriggerServerEvent("CR.PV:Update", NetworkGetNetworkIdFromEntity(vehicle), GetVehicleProperties(vehicle))
 end
 
 Citizen.CreateThread(function()
@@ -15,23 +15,21 @@ Citizen.CreateThread(function()
             if not DoesEntityExist(vehicle) or IsEntityDead(vehicle) then -- I dont even know why they would be in the pool if they meet these conditions, but fivem
                 warn(
                     "FiveM is fucking stupid and attempted to tick on a entity that is dead or doesnt even exist. Coolio.")
-                goto skip
+            else
+                if IsVehiclePersistent(vehicle) and NetworkHasControlOfEntity(vehicle) then
+                    updateTick(vehicle)
+
+                    scopeVehicles[GetVehicleUID(vehicle)] = vehicle
+
+                    print("Updated vehicle " .. GetVehicleUID(vehicle) .. " and added to scope.")
+                end
             end
-
-            if IsVehiclePersistent(vehicle) and NetworkHasControlOfEntity(vehicle) then
-                updateTick(vehicle)
-
-                scopeVehicles[GetVehicleUID(vehicle)] = vehicle
-            end
-
-            ::skip::
         end
 
         for vehicleId, vehicleData in pairs(Vehicles) do
             local vehicle = scopeVehicles[vehicleId]
 
             if vehicle ~= nil then
-                -- Handle transfers, despawning
                 local currentOwner = NetworkGetEntityOwner(vehicle)
                 local distance = #(GetEntityCoords(vehicle) - playerPos)
 
@@ -50,21 +48,32 @@ Citizen.CreateThread(function()
                     end
                 end
             else
-                -- Handle spawning
-                local vehiclePos = vehicleData.matrix.position
+                if type(vehicleData) == "table" then
+                    local vehiclePosNV3 = vehicleData.matrix.position -- NV3 = Not Vector3
+                    local vehiclePos = vector3(vehiclePosNV3.x, vehiclePosNV3.y, vehiclePosNV3.z)
+                    local distance = #(playerPos - vehiclePos)
 
-                if #(playerPos - vehiclePos) <= Config.SpawnDistance and GetPlayerClosestToCoord(vehiclePos) == PlayerId() then
-                    local newVehicle = CreateVehicle(vehicleData.model, vehiclePos.x, vehiclePos.y, vehiclePos.z,
-                        vehicleData.matrix
-                        .heading, true, true)
+                    if distance <= Config.SpawnDistance and GetPlayerClosestToCoord(vehiclePos) == PlayerId() then
+                        RequestModel(vehicleData.model)
+                        repeat
+                            Wait(0)
+                        until HasModelLoaded(vehicleData.model)
 
-                    repeat
-                        Wait(0)
-                    until DoesEntityExist(newVehicle)
+                        local newVehicle = CreateVehicle(vehicleData.model, vehiclePos.x, vehiclePos.y, vehiclePos.z,
+                            vehicleData.matrix
+                            .heading, true, true)
 
-                    SetVehicleProperties(newVehicle, vehicleData)
+                        repeat
+                            Wait(0)
+                            print("Awaiting for new vehicle to exist")
+                        until DoesEntityExist(newVehicle)
 
-                    print("Spawning vehicle " .. vehicleId)
+                        SetVehicleProperties(newVehicle, vehicleData)
+
+                        print("Spawning vehicle " .. vehicleId)
+                    end
+                else
+                    warn("Data for vehicle " .. vehicleId .. " is of unknown type: " .. type(vehicleData))
                 end
             end
         end

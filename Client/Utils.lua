@@ -271,7 +271,7 @@ function GetPlayerClosestToEntity(entity)
     local closestDistance = -1
     local entityCoords = GetEntityCoords(entity)
 
-    for _, playerId in ipairs(GetPlayers()) do
+    for _, playerId in ipairs(GetActivePlayers()) do
         local playerPed = GetPlayerPed(playerId)
         local playerCoords = GetEntityCoords(playerPed)
         local distance = #(entityCoords - playerCoords)
@@ -290,7 +290,7 @@ function GetPlayerClosestToCoord(coord)
     local closestDistance = -1
     local entityCoords = coord
 
-    for _, playerId in ipairs(GetPlayers()) do
+    for _, playerId in ipairs(GetActivePlayers()) do
         local playerPed = GetPlayerPed(playerId)
         local playerCoords = GetEntityCoords(playerPed)
         local distance = #(entityCoords - playerCoords)
