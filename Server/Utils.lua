@@ -16,3 +16,20 @@ function TrimVehiclesJson(vehiclesJson)
 
     return decodedVehicles
 end
+
+Citizen.CreateThread(function()
+    while true do
+        Wait(100)
+        local playerList = {}
+
+        for _, playerId in ipairs(GetPlayers()) do
+            playerId = tonumber(playerId)
+            local ped = GetPlayerPed(playerId)
+            local coord = GetEntityCoords(ped)
+
+            playerList[playerId] = coord
+        end
+
+        TriggerClientEvent("CR.PV:Playerlist", -1, playerList)
+    end
+end)

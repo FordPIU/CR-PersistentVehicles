@@ -4,6 +4,26 @@ local function updateTick(vehicle)
     TriggerServerEvent("CR.PV:Update", NetworkGetNetworkIdFromEntity(vehicle), GetVehicleProperties(vehicle))
 end
 
+local function duplicationDetection(vehicle)
+    local vehicleId = GetVehicleUID(vehicle)
+    local anyDuplicates = false
+
+    for _, vehicle2 in ipairs(GetGamePool("CVehicle")) do
+        local vehicle2Id = GetVehicleUID(vehicle2)
+
+        if vehicleId == vehicle2Id and not vehicle == vehicle2 then
+            DeleteEntity(vehicle)
+            DeleteEntity(vehicle2)
+
+            anyDuplicates = true
+
+            --print("Duplicated vehicleId located " .. vehicleId .. ", " .. vehicle2Id)
+        end
+    end
+
+    return anyDuplicates
+end
+
 Citizen.CreateThread(function()
     while true do
         Wait(1000) -- 1 TPS
@@ -17,11 +37,13 @@ Citizen.CreateThread(function()
                     "FiveM is fucking stupid and attempted to tick on a entity that is dead or doesnt even exist. Coolio.")
             else
                 if IsVehiclePersistent(vehicle) and NetworkHasControlOfEntity(vehicle) then
-                    updateTick(vehicle)
+                    if not duplicationDetection(vehicle) then
+                        updateTick(vehicle)
 
-                    scopeVehicles[GetVehicleUID(vehicle)] = vehicle
+                        scopeVehicles[GetVehicleUID(vehicle)] = vehicle
 
-                    print("Updated vehicle " .. GetVehicleUID(vehicle) .. " and added to scope.")
+                        --print("Updated vehicle " .. GetVehicleUID(vehicle) .. " and added to scope.")
+                    end
                 end
             end
         end
@@ -36,15 +58,16 @@ Citizen.CreateThread(function()
                 if distance > Config.DespawnDistance and currentOwner == PlayerId() then
                     local closestPlayer = GetPlayerClosestToEntity(vehicle)
 
-                    if closestPlayer == PlayerId() then
-                        updateTick(vehicle)
-                        DeleteEntity(vehicle)
+                    if closestPlayer == GetPlayerServerId(PlayerId()) then
+                        if not duplicationDetection(vehicle) then
+                            updateTick(vehicle)
+                            DeleteEntity(vehicle)
 
-                        print("Despawning vehicle " .. vehicleId .. " due to distance.")
+                            --print("Despawning vehicle " .. vehicleId .. " due to distance.")
+                        end
                     else
-                        TriggerServerEvent("CR.PV:Transfer", GetPlayerServerId(closestPlayer), vehicleId)
-                        print("Requested transfer of vehicle " ..
-                            vehicleId .. " to " .. closestPlayer .. "(" .. GetPlayerServerId(closestPlayer) .. ")")
+                        TriggerServerEvent("CR.PV:Transfer", closestPlayer, vehicleId)
+                        --print("Requested transfer of vehicle " .. vehicleId .. " to " .. closestPlayer)
                     end
                 end
             else
@@ -53,7 +76,7 @@ Citizen.CreateThread(function()
                     local vehiclePos = vector3(vehiclePosNV3.x, vehiclePosNV3.y, vehiclePosNV3.z)
                     local distance = #(playerPos - vehiclePos)
 
-                    if distance <= Config.SpawnDistance and GetPlayerClosestToCoord(vehiclePos) == PlayerId() then
+                    if distance <= Config.SpawnDistance and GetPlayerClosestToCoord(vehiclePos) == GetPlayerServerId(PlayerId()) and not DoesPersistentVehicleExists(vehicleId) then
                         RequestModel(vehicleData.model)
                         repeat
                             Wait(0)
@@ -65,12 +88,12 @@ Citizen.CreateThread(function()
 
                         repeat
                             Wait(0)
-                            print("Awaiting for new vehicle to exist")
+                            --print("Awaiting for new vehicle to exist")
                         until DoesEntityExist(newVehicle)
 
                         SetVehicleProperties(newVehicle, vehicleData)
 
-                        print("Spawning vehicle " .. vehicleId)
+                        --print("Spawning vehicle " .. vehicleId)
                     end
                 else
                     warn("Data for vehicle " .. vehicleId .. " is of unknown type: " .. type(vehicleData))
@@ -86,13 +109,19 @@ RegisterNetEvent("CR.PV:Vehicles", function(vehicles)
 end)
 RegisterNetEvent("CR.PV:TransferRequest", function(vehicleId)
     local vehicle = GetVehicleFromVehicleId(vehicleId) -- This might be more expensive than just storing this shit in the loop above
+    local timeout = GetGameTimer() + 5000
 
     repeat
-        Wait(0)
+        Wait(5)
         NetworkRequestControlOfEntity(vehicle)
+
+        if GetGameTimer() >= timeout then
+            warn("Timeout for transfer request of vehicle " .. vehicleId)
+            return
+        end
     until NetworkHasControlOfEntity(vehicle)
 
-    print("Transfer of vehicle " .. vehicleId .. " complete.")
+    --print("Transfer of vehicle " .. vehicleId .. " complete.")
 end)
 
 function IsVehiclePersistent(vehicle)

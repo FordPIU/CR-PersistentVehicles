@@ -3,6 +3,8 @@
     What a ugly mess.
 ]]
 
+local PlayerList = {}
+
 function GetEntityMatrixTable(vehicle)
     local forward, right, up, pos = GetEntityMatrix(vehicle)
 
@@ -271,9 +273,7 @@ function GetPlayerClosestToEntity(entity)
     local closestDistance = -1
     local entityCoords = GetEntityCoords(entity)
 
-    for _, playerId in ipairs(GetActivePlayers()) do
-        local playerPed = GetPlayerPed(playerId)
-        local playerCoords = GetEntityCoords(playerPed)
+    for playerId, playerCoords in pairs(PlayerList) do
         local distance = #(entityCoords - playerCoords)
 
         if closestDistance == -1 or distance < closestDistance then
@@ -290,9 +290,7 @@ function GetPlayerClosestToCoord(coord)
     local closestDistance = -1
     local entityCoords = coord
 
-    for _, playerId in ipairs(GetActivePlayers()) do
-        local playerPed = GetPlayerPed(playerId)
-        local playerCoords = GetEntityCoords(playerPed)
+    for playerId, playerCoords in pairs(PlayerList) do
         local distance = #(entityCoords - playerCoords)
 
         if closestDistance == -1 or distance < closestDistance then
@@ -309,3 +307,15 @@ function GetVehicleFromVehicleId(vehicleId)
         if GetVehicleUID(v) == vehicleId then return v end
     end
 end
+
+function DoesPersistentVehicleExists(vehicleId)
+    for _, v in ipairs(GetGamePool("CVehicle")) do
+        if GetVehicleUID(v) == vehicleId then return true end
+    end
+
+    return false
+end
+
+RegisterNetEvent("CR.PV:Playerlist", function(playerList)
+    PlayerList = playerList
+end)
