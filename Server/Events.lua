@@ -3,18 +3,65 @@
 ]]
 AddEventHandler("onResourceStart", function(resourceName)
     if resourceName == GetCurrentResourceName() then
-        Vehicles = LoadVehicleData(resourceName)
-
-        if not GlobalState.PersistentVehiclesSpawned then
-            RefreshAndSpawn()
-
-            GlobalState.PersistentVehiclesSpawned = true
-        end
+        LoadVehicleData(resourceName)
     end
 end)
 
 AddEventHandler("onResourceStop", function(resourceName)
     if resourceName == GetCurrentResourceName() then
         SaveVehicleData(resourceName)
+    end
+end)
+
+--[[
+    New Player
+]]
+RegisterNetEvent("CR.PV:NewPlayer", function()
+    TriggerClientEvent("CR.PV:Vehicles", source, GetVehicles())
+end)
+
+--[[
+    Exposed Events
+]]
+RegisterNetEvent("CR.PV:Update", function(vehicleNetId, properties)
+    local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
+
+    if not DoesEntityExist(vehicle) then
+        warn("Event call to forget vehicle, but net id was invalid and the vehicle doesnt exist.")
+        return
+    end
+
+    UpdateVehicle(vehicle, properties)
+end)
+
+RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
+    local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
+
+    if not DoesEntityExist(vehicle) then
+        warn("Event call to forget vehicle, but net id was invalid and the vehicle doesnt exist.")
+        return
+    end
+
+    ForgetVehicle(vehicle)
+end)
+
+--[[
+    vMenu vehicle spawn detection
+]]
+AddEventHandler("entityCreated", function(entity)
+    repeat
+        Wait(0)
+    until DoesEntityExist(entity)
+
+    if GetEntityType(entity) == 2 then
+        local driver = GetPedInVehicleSeat(entity, -1)
+
+        if DoesEntityExist(driver) and IsPedAPlayer(driver) then
+            if not IsVehiclePersistent(entity) then
+                UpdateVehicle(entity, true)
+            else
+                DeleteEntity(entity)
+            end
+        end
     end
 end)

@@ -258,3 +258,33 @@ function SetVehicleProperties(vehicle, properties)
         Wait(0)
     end
 end
+
+function GetVehicleUID(vehicle)
+    local plateText = GetVehicleNumberPlateText(vehicle)
+    local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
+
+    return plateIndex .. "-" .. plateText
+end
+
+function Server(eventName, vehicle)
+    TriggerServerEvent("CR.PV:" .. eventName, NetworkGetNetworkIdFromEntity(vehicle))
+end
+
+function GetPlayerClosestToEntity(entity)
+    local closestPlayer = nil
+    local closestDistance = -1
+    local entityCoords = GetEntityCoords(entity)
+
+    for _, playerId in ipairs(GetPlayers()) do
+        local playerPed = GetPlayerPed(playerId)
+        local playerCoords = GetEntityCoords(playerPed)
+        local distance = #(entityCoords - playerCoords)
+
+        if closestDistance == -1 or distance < closestDistance then
+            closestPlayer = playerId
+            closestDistance = distance
+        end
+    end
+
+    return closestPlayer
+end

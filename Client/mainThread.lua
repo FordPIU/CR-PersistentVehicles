@@ -1,43 +1,82 @@
+local Vehicles = {}
+
+local function updateTick(vehicle)
+    Server("Update", vehicle)
+end
+
 Citizen.CreateThread(function()
     while true do
-        Wait(500) -- 2 TPS
+        Wait(1000) -- 1 TPS
 
-        for _, veh in pairs(GetGamePool("CVehicle")) do
-            local entityState = Entity(veh).state
+        local scopeVehicles = {}
+        local playerPos = GetEntityCoords(PlayerPedId())
 
-            if not DoesEntityExist(veh) or IsEntityDead(veh) then -- I dont even know why they would be in the pool if they meet these conditions, but fivem
-                warn("FiveM is fucking stupid and attempted to tick on a entity that is dead or doesnt even exist. Coolio.")
+        for _, vehicle in ipairs(GetGamePool("CVehicle")) do
+            if not DoesEntityExist(vehicle) or IsEntityDead(vehicle) then -- I dont even know why they would be in the pool if they meet these conditions, but fivem
+                warn(
+                    "FiveM is fucking stupid and attempted to tick on a entity that is dead or doesnt even exist. Coolio.")
                 goto skip
             end
 
-            -- Updated properties for vehicles that server says needs it
-            -- I honestly hate this method but too far along and too tired.
-            if entityState.NeedsPropertiesSet ~= nil then
-                -- Safeguard to make sure no issues with fivems shit networking happens
-                if not NetworkHasControlOfEntity(veh) then
-                    repeat
-                        Wait(0)
-                        NetworkRequestControlOfEntity(veh)
-                    until NetworkHasControlOfEntity(veh)
-                end
+            if IsVehiclePersistent(vehicle) and NetworkHasControlOfEntity(vehicle) then
+                updateTick(vehicle)
 
-                -- This is just kinda ugly, fuck networking
-                SetVehicleProperties(veh, entityState.NeedsPropertiesSet)
-                TriggerServerEvent("CR.PV:PropertiesSet", NetworkGetNetworkIdFromEntity(veh))
-                print("Set properties for persistent vehicle" .. veh)
-            end
-
-            -- Yay, merging code that already doesnt work so that more of it doesnt work
-            -- I wonder why I keep burning out
-            if entityState.IsPersistent and NetworkHasControlOfEntity(veh) then
-                local vehicleNetId = NetworkGetNetworkIdFromEntity(veh)
-                local vehicleProperties = GetVehicleProperties(veh)
-
-                TriggerServerEvent("CR.PV:Update", vehicleNetId, vehicleProperties)
-                print("Updated properties for persistent vehicle " .. veh)
+                scopeVehicles[GetVehicleUID(vehicle)] = vehicle
             end
 
             ::skip::
         end
+
+        for vehicleId, vehicleData in pairs(Vehicles) do
+            local vehicle = scopeVehicles[vehicleId]
+
+            if vehicle ~= nil then
+                -- Handle transfers, despawning
+                local currentOwner = NetworkGetEntityOwner(vehicle)
+                local closestPlayer = GetPlayerClosestToEntity(vehicle)
+
+                if closestPlayer == PlayerId() then
+                    if currentOwner ~= PlayerId() then
+                        repeat
+                            NetworkRequestControlOfEntity(vehicle)
+                            Wait(0)
+                        until NetworkHasControlOfEntity(vehicle)
+
+                        print("Got control of vehicle " .. vehicleId .. " due to being closer.")
+                    elseif #(GetEntityCoords(vehicle) - playerPos) >= Config.DespawnDistance then
+                        updateTick(vehicle)
+                        DeleteEntity(vehicle)
+
+                        print("Despawning vehicle " .. vehicleId .. " due to distance.")
+                    end
+                end
+            else
+                -- Handle spawning
+                local vehiclePos = vehicleData.matrix.position
+
+                if #(playerPos - vehiclePos) <= Config.SpawnDistance then
+                    local newVehicle = CreateVehicle(vehicleData.model, vehiclePos.x, vehiclePos.y, vehiclePos.z,
+                        vehicleData.matrix
+                        .heading, true, true)
+
+                    repeat
+                        Wait(0)
+                    until DoesEntityExist(newVehicle)
+
+                    SetVehicleProperties(newVehicle, vehicleData)
+
+                    print("Spawning vehicle " .. vehicleId)
+                end
+            end
+        end
     end
 end)
+
+TriggerServerEvent("CR.PV:NewPlayer")
+RegisterNetEvent("CR.PV:Vehicles", function(vehicles)
+    Vehicles = vehicles
+end)
+
+function IsVehiclePersistent(vehicle)
+    if Vehicles[GetVehicleUID(vehicle)] ~= nil then return true else return false end
+end
