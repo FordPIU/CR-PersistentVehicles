@@ -1,5 +1,20 @@
 local Vehicles = {}
+local Vehicles_Metatable = {
+    __index = function(table, key)
+        return rawget(table, key)
+    end,
+
+    __newindex = function(table, key, value)
+        local oldValue = rawget(table, key)
+        if oldValue ~= value then
+            rawset(table, key, value) -- Actually set the new value
+            SaveVehicleData()
+        end
+    end
+}
 local Deleting = false
+
+setmetatable(Vehicles, Vehicles_Metatable)
 --------------------------------------------------
 
 local function deleteAllPersistentVehicles()
@@ -51,10 +66,6 @@ function UpdateVehicleProperties(vehicle, properties)
     SaveVehicleProperties()
 end
 
-function SaveVehicleProperties(resourceName)
-    SaveResourceFile(resourceName or GetCurrentResourceName(), "vehicles.json", json.encode(Vehicles), -1)
-end
-
 function IsVehiclePersistent(vehicle)
     if Vehicles[GetVehicleUID(vehicle)] then
         return true
@@ -68,31 +79,6 @@ function NewVehiclePersistent(vehicle)
 end
 
 --------------------------------------------------
-
-AddEventHandler("onResourceStart", function(resourceName)
-    if resourceName == GetCurrentResourceName() then
-        local vehiclesJson = LoadResourceFile(resourceName, "vehicles.json")
-
-        if vehiclesJson ~= nil then
-            Vehicles = TrimVehiclesJson(vehiclesJson)
-            print("Loaded vehicles.json")
-        else
-            warn("No file: vehicles.json")
-        end
-
-        if not GlobalState.PersistentVehiclesSpawned then
-            RefreshAndSpawn()
-
-            GlobalState.PersistentVehiclesSpawned = true
-        end
-    end
-end)
-
-AddEventHandler("onResourceStop", function(resourceName)
-    if resourceName == GetCurrentResourceName() then
-        SaveVehicleProperties(resourceName)
-    end
-end)
 
 AddEventHandler("entityRemoved", function(entity)
     if not Deleting and Entity(entity).state.IsPersistent then
@@ -116,10 +102,34 @@ RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
     SaveVehicleProperties()
 end)
 
---------------------------------------------------
+--[[
+    Debug override command
+]]
+RegisterCommand("rpvs", function(source)
+    if source > 0 then return end -- Only server can run this command
 
-RegisterCommand("rpvs", function()
     GlobalState.PersistentVehiclesSpawned = false
 
     print("Reset global state for Persistent Vehicles Spawned")
 end, false)
+
+--[[
+    Data Load/Save
+]]
+function LoadVehicleData(resourceName)
+    local vehiclesJson = LoadResourceFile(resourceName or GetCurrentResourceName(), "vehicles.json")
+    local vehicles = {}
+
+    if vehiclesJson ~= nil then
+        vehicles = TrimVehiclesJson(vehiclesJson)
+        print("Loaded vehicles.json")
+    else
+        warn("No file: vehicles.json")
+    end
+
+    return vehicles
+end
+
+function SaveVehicleData(resourceName)
+    SaveResourceFile(resourceName or GetCurrentResourceName(), "vehicles.json", json.encode(Vehicles), -1)
+end
