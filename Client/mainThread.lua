@@ -1,7 +1,7 @@
 local Vehicles = {}
 
 local function updateTick(vehicle)
-    Server("Update", vehicle)
+    TriggerServerEvent("CR.PV:Update", NetworkGetNetworkIdFromEntity(vehicle))
 end
 
 Citizen.CreateThread(function()
@@ -33,28 +33,27 @@ Citizen.CreateThread(function()
             if vehicle ~= nil then
                 -- Handle transfers, despawning
                 local currentOwner = NetworkGetEntityOwner(vehicle)
-                local closestPlayer = GetPlayerClosestToEntity(vehicle)
+                local distance = #(GetEntityCoords(vehicle) - playerPos)
 
-                if closestPlayer == PlayerId() then
-                    if currentOwner ~= PlayerId() then
-                        repeat
-                            NetworkRequestControlOfEntity(vehicle)
-                            Wait(0)
-                        until NetworkHasControlOfEntity(vehicle)
+                if distance > Config.DespawnDistance and currentOwner == PlayerId() then
+                    local closestPlayer = GetPlayerClosestToEntity(vehicle)
 
-                        print("Got control of vehicle " .. vehicleId .. " due to being closer.")
-                    elseif #(GetEntityCoords(vehicle) - playerPos) >= Config.DespawnDistance then
+                    if closestPlayer == PlayerId() then
                         updateTick(vehicle)
                         DeleteEntity(vehicle)
 
                         print("Despawning vehicle " .. vehicleId .. " due to distance.")
+                    else
+                        TriggerServerEvent("CR.PV:Transfer", GetPlayerServerId(closestPlayer), vehicleId)
+                        print("Requested transfer of vehicle " ..
+                            vehicleId .. " to " .. closestPlayer .. "(" .. GetPlayerServerId(closestPlayer) .. ")")
                     end
                 end
             else
                 -- Handle spawning
                 local vehiclePos = vehicleData.matrix.position
 
-                if #(playerPos - vehiclePos) <= Config.SpawnDistance then
+                if #(playerPos - vehiclePos) <= Config.SpawnDistance and GetPlayerClosestToCoord(vehiclePos) == PlayerId() then
                     local newVehicle = CreateVehicle(vehicleData.model, vehiclePos.x, vehiclePos.y, vehiclePos.z,
                         vehicleData.matrix
                         .heading, true, true)
@@ -75,6 +74,16 @@ end)
 TriggerServerEvent("CR.PV:NewPlayer")
 RegisterNetEvent("CR.PV:Vehicles", function(vehicles)
     Vehicles = vehicles
+end)
+RegisterNetEvent("CR.PV:TransferRequest", function(vehicleId)
+    local vehicle = GetVehicleFromVehicleId(vehicleId) -- This might be more expensive than just storing this shit in the loop above
+
+    repeat
+        Wait(0)
+        NetworkRequestControlOfEntity(vehicle)
+    until NetworkHasControlOfEntity(vehicle)
+
+    print("Transfer of vehicle " .. vehicleId .. " complete.")
 end)
 
 function IsVehiclePersistent(vehicle)

@@ -266,10 +266,6 @@ function GetVehicleUID(vehicle)
     return plateIndex .. "-" .. plateText
 end
 
-function Server(eventName, vehicle)
-    TriggerServerEvent("CR.PV:" .. eventName, NetworkGetNetworkIdFromEntity(vehicle))
-end
-
 function GetPlayerClosestToEntity(entity)
     local closestPlayer = nil
     local closestDistance = -1
@@ -287,4 +283,29 @@ function GetPlayerClosestToEntity(entity)
     end
 
     return closestPlayer
+end
+
+function GetPlayerClosestToCoord(coord)
+    local closestPlayer = nil
+    local closestDistance = -1
+    local entityCoords = coord
+
+    for _, playerId in ipairs(GetPlayers()) do
+        local playerPed = GetPlayerPed(playerId)
+        local playerCoords = GetEntityCoords(playerPed)
+        local distance = #(entityCoords - playerCoords)
+
+        if closestDistance == -1 or distance < closestDistance then
+            closestPlayer = playerId
+            closestDistance = distance
+        end
+    end
+
+    return closestPlayer
+end
+
+function GetVehicleFromVehicleId(vehicleId)
+    for _, v in ipairs(GetGamePool("CVehicle")) do
+        if GetVehicleUID(v) == vehicleId then return v end
+    end
 end

@@ -14,10 +14,13 @@ AddEventHandler("onResourceStop", function(resourceName)
 end)
 
 --[[
-    New Player
+    Player related
 ]]
 RegisterNetEvent("CR.PV:NewPlayer", function()
     TriggerClientEvent("CR.PV:Vehicles", source, GetVehicles())
+end)
+RegisterNetEvent("CR.PV:Transfer", function(serverId, vehicleId)
+    TriggerClientEvent("CR.PV:TransferRequest", serverId, vehicleId)
 end)
 
 --[[
