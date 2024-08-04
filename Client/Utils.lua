@@ -1,3 +1,8 @@
+--[[
+    I honestly never want to ever touch this file...
+    What a ugly mess.
+]]
+
 function GetEntityMatrixTable(vehicle)
     local forward, right, up, pos = GetEntityMatrix(vehicle)
 
