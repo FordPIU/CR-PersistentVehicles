@@ -5,6 +5,11 @@ Citizen.CreateThread(function()
         for _, veh in pairs(GetGamePool("CVehicle")) do
             local entityState = Entity(veh).state
 
+            if not DoesEntityExist(veh) or IsEntityDead(veh) then -- I dont even know why they would be in the pool if they meet these conditions, but fivem
+                print("Hey, fivem is fucking stupid")
+                goto skip
+            end
+
             -- Updated properties for vehicles that server says needs it
             -- I honestly hate this method but too far along and too tired.
             if entityState.NeedsPropertiesSet ~= nil then
@@ -29,6 +34,8 @@ Citizen.CreateThread(function()
 
                 TriggerServerEvent("CR.PV:Update", vehicleNetId, vehicleProperties)
             end
+
+            ::skip::
         end
     end
 end)
