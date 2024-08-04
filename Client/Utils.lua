@@ -3,6 +3,8 @@
     What a ugly mess.
 ]]
 
+local PlayerList = {}
+
 function GetEntityMatrixTable(vehicle)
     local forward, right, up, pos = GetEntityMatrix(vehicle)
 
@@ -258,3 +260,62 @@ function SetVehicleProperties(vehicle, properties)
         Wait(0)
     end
 end
+
+function GetVehicleUID(vehicle)
+    local plateText = GetVehicleNumberPlateText(vehicle)
+    local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
+
+    return plateIndex .. "-" .. plateText
+end
+
+function GetPlayerClosestToEntity(entity)
+    local closestPlayer = nil
+    local closestDistance = -1
+    local entityCoords = GetEntityCoords(entity)
+
+    for playerId, playerCoords in pairs(PlayerList) do
+        local distance = #(entityCoords - playerCoords)
+
+        if closestDistance == -1 or distance < closestDistance then
+            closestPlayer = playerId
+            closestDistance = distance
+        end
+    end
+
+    return closestPlayer
+end
+
+function GetPlayerClosestToCoord(coord)
+    local closestPlayer = nil
+    local closestDistance = -1
+    local entityCoords = coord
+
+    for playerId, playerCoords in pairs(PlayerList) do
+        local distance = #(entityCoords - playerCoords)
+
+        if closestDistance == -1 or distance < closestDistance then
+            closestPlayer = playerId
+            closestDistance = distance
+        end
+    end
+
+    return closestPlayer
+end
+
+function GetVehicleFromVehicleId(vehicleId)
+    for _, v in ipairs(GetGamePool("CVehicle")) do
+        if GetVehicleUID(v) == vehicleId then return v end
+    end
+end
+
+function DoesPersistentVehicleExists(vehicleId)
+    for _, v in ipairs(GetGamePool("CVehicle")) do
+        if GetVehicleUID(v) == vehicleId then return true end
+    end
+
+    return false
+end
+
+RegisterNetEvent("CR.PV:Playerlist", function(playerList)
+    PlayerList = playerList
+end)
