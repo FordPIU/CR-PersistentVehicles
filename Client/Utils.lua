@@ -41,8 +41,8 @@ function GetVehicleProperties(vehicle)
         sirenOn           = IsVehicleSirenOn(vehicle),
         sirenAudioOn      = IsVehicleSirenAudioOn(vehicle),
 
-        plate             = GetVehicleNumberPlateText(vehicle),
-        plateIndex        = GetVehicleNumberPlateTextIndex(vehicle),
+        --plate             = GetVehicleNumberPlateText(vehicle),
+        --plateIndex        = GetVehicleNumberPlateTextIndex(vehicle),
 
         bodyHealth        = GetVehicleBodyHealth(vehicle),
         engineHealth      = GetVehicleEngineHealth(vehicle),
@@ -134,10 +134,13 @@ function GetVehicleProperties(vehicle)
     return props
 end
 
-function SetVehicleProperties(vehicle, properties)
+function SetVehicleProperties(vehicle, properties, vehicleId)
     local colorPrimary, colorSecondary = GetVehicleColours(vehicle)
     local pearlescentColor, wheelColor = GetVehicleExtraColours(vehicle)
+    local plateIndex, plateText = GetPlateInfoByVehicleId(vehicleId)
     SetVehicleModKit(vehicle, 0)
+    SetVehicleNumberPlateTextIndex(vehicle, plateIndex)
+    SetVehicleNumberPlateText(vehicle, plateText)
 
     if properties.matrix then
         local vectors = properties.matrix.vectors
@@ -151,8 +154,6 @@ function SetVehicleProperties(vehicle, properties)
     end
     if properties.sirenOn then SetVehicleSiren(vehicle, properties.sirenOn) end
     if properties.sirenAudioOn then SetVehicleHasMutedSirens(vehicle, not properties.sirenAudioOn) end
-    if properties.plate then SetVehicleNumberPlateText(vehicle, properties.plate) end
-    if properties.plateIndex then SetVehicleNumberPlateTextIndex(vehicle, properties.plateIndex) end
     if properties.bodyHealth then SetVehicleBodyHealth(vehicle, properties.bodyHealth + 0.0) end
     if properties.engineHealth then SetVehicleEngineHealth(vehicle, properties.engineHealth + 0.0) end
     if properties.fuelLevel then SetVehicleFuelLevel(vehicle, properties.fuelLevel + 0.0) end
@@ -343,6 +344,18 @@ function ForgetVehicle(vehicle)
     Print("Vehicle deleted")
 
     return true
+end
+
+function GetPlateInfoByVehicleId(vehicleId)
+    local result = {}
+
+    for part in string.gmatch(vehicleId, "([^%-]+)") do
+        table.insert(result, part)
+    end
+
+    print(result[1], result[2])
+
+    return result[1], result[2]
 end
 
 RegisterNetEvent("CR.PV:Playerlist", function(playerList)

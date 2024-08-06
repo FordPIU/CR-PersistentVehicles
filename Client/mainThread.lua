@@ -1,25 +1,5 @@
 local Vehicles = {}
 
-local function duplicationDetection(vehicle)
-    local vehicleId = GetVehicleUID(vehicle)
-    local anyDuplicates = false
-
-    for _, vehicle2 in ipairs(GetGamePool("CVehicle")) do
-        local vehicle2Id = GetVehicleUID(vehicle2)
-
-        if vehicleId == vehicle2Id and not vehicle == vehicle2 then
-            DeleteEntity(vehicle)
-            DeleteEntity(vehicle2)
-
-            anyDuplicates = true
-
-            Print("Duplicated vehicleId located " .. vehicleId .. ", " .. vehicle2Id)
-        end
-    end
-
-    return anyDuplicates
-end
-
 local function updateTick(vehicle)
     if not IsVehiclePersistent(vehicle) then return false end
     if not NetworkHasControlOfEntity(vehicle) then return false end
@@ -50,14 +30,7 @@ local function spawnTick(vehicleId, vehicleData, playerPos)
         local newVehicle = CreateVehicle(vehicleData.model, vehiclePos.x, vehiclePos.y, vehiclePos.z,
             vehicleData.matrix
             .heading, true, false)
-
-        repeat
-            Wait(0)
-            Print("Awaiting for new vehicle to exist")
-        until DoesEntityExist(newVehicle)
-
-        SetVehicleProperties(newVehicle, vehicleData)
-
+        SetVehicleProperties(newVehicle, vehicleData, vehicleId)
         Print("Spawning vehicle " .. vehicleId)
 
         return true
@@ -67,8 +40,6 @@ local function spawnTick(vehicleId, vehicleData, playerPos)
 end
 
 local function despawnTick(vehicleId, vehicle, playerPos)
-    if vehicle == nil then return false end
-
     local currentOwner = NetworkGetEntityOwner(vehicle)
     local distance = #(GetEntityCoords(vehicle) - playerPos)
 
@@ -78,11 +49,9 @@ local function despawnTick(vehicleId, vehicle, playerPos)
     local closestPlayer = GetPlayerClosestToEntity(vehicle)
 
     if closestPlayer == GetPlayerServerId(PlayerId()) then
-        if not duplicationDetection(vehicle) then
-            updateTick(vehicle)
-            DeleteEntity(vehicle)
-            Print("Despawning vehicle " .. vehicleId .. " due to distance.")
-        end
+        updateTick(vehicle)
+        DeleteEntity(vehicle)
+        Print("Despawning vehicle " .. vehicleId .. " due to distance.")
     else
         TriggerServerEvent("CR.PV:Transfer", closestPlayer, vehicleId)
         Print("Requested transfer of vehicle " .. vehicleId .. " to " .. closestPlayer)
@@ -91,7 +60,7 @@ end
 
 local function duplicateTick(vehicleId, vehicle)
     for _, v in ipairs(GetGamePool("CVehicle")) do
-        if GetVehicleUID(v) == vehicleId then
+        if DoesEntityExist(v) and GetVehicleUID(v) == vehicleId and v ~= vehicle then
             DeleteEntity(v)
             DeleteEntity(vehicle)
         end
@@ -102,25 +71,22 @@ Citizen.CreateThread(function()
     while true do
         Wait(1000) -- 1 TPS
 
-        local scopeVehicles = {}
         local playerPos = GetEntityCoords(PlayerPedId())
 
-        for _, vehicle in ipairs(GetGamePool("CVehicle")) do
-            duplicateTick(GetVehicleUID(vehicle), vehicle)
+        if playerPos ~= nil then
+            for _, vehicle in ipairs(GetGamePool("CVehicle")) do
+                if DoesEntityExist(vehicle) and IsVehiclePersistent(vehicle) then
+                    local vehicleId = GetVehicleUID(vehicle)
 
-            if not DoesEntityExist(vehicle) or IsEntityDead(vehicle) then -- I dont even know why they would be in the pool if they meet these conditions, but fivem
-                Warn(
-                    "FiveM is fucking stupid and attempted to tick on a entity that is dead or doesnt even exist. Coolio.")
-            elseif updateTick(vehicle) then
-                scopeVehicles[GetVehicleUID(vehicle)] = vehicle
+                    duplicateTick(vehicleId, vehicle)
+                    updateTick(vehicle)
+                    despawnTick(vehicleId, vehicle, playerPos)
+                end
             end
-        end
 
-        for vehicleId, vehicleData in pairs(Vehicles) do
-            local vehicle = scopeVehicles[vehicleId]
-
-            spawnTick(vehicleId, vehicleData)
-            despawnTick(vehicleId, vehicle, playerPos)
+            for vehicleId, vehicleData in pairs(Vehicles) do
+                spawnTick(vehicleId, vehicleData, playerPos)
+            end
         end
     end
 end)
@@ -149,6 +115,11 @@ RegisterNetEvent("CR.PV:TransferRequest", function(vehicleId)
 end)
 
 function IsVehiclePersistent(vehicle)
+    if not DoesEntityExist(vehicle) then
+        Warn("Attempt to get IsVehiclePersistent on vehicle that does not exist?")
+        return false
+    end
+
     if Vehicles[GetVehicleUID(vehicle)] ~= nil then return true else return false end
 end
 
