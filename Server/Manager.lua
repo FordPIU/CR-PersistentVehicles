@@ -25,16 +25,16 @@ function LoadVehicleData(resourceName)
     if vehiclesJson ~= nil then
         Vehicles = TrimVehiclesJson(vehiclesJson)
         setmetatable(Vehicles, Vehicles_Metatable) -- Just to make sure the new table ref doesnt fuck it
-        --print("Loaded vehicles.json")
+        print("Loaded vehicles.json")
     else
         warn("No file: vehicles.json")
     end
 end
 
 function SaveVehicleData(resourceName)
-    --print("Saving data...")
+    print("Saving data...")
     SaveResourceFile(resourceName or GetCurrentResourceName(), "vehicles.json", json.encode(Vehicles), -1)
-    --print("Saved data successfully.")
+    print("Saved data successfully.")
 end
 
 --[[

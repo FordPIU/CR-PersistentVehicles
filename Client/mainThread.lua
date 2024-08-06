@@ -17,7 +17,7 @@ local function duplicationDetection(vehicle)
 
             anyDuplicates = true
 
-            --print("Duplicated vehicleId located " .. vehicleId .. ", " .. vehicle2Id)
+            print("Duplicated vehicleId located " .. vehicleId .. ", " .. vehicle2Id)
         end
     end
 
@@ -63,11 +63,11 @@ Citizen.CreateThread(function()
                             updateTick(vehicle)
                             DeleteEntity(vehicle)
 
-                            --print("Despawning vehicle " .. vehicleId .. " due to distance.")
+                            print("Despawning vehicle " .. vehicleId .. " due to distance.")
                         end
                     else
                         TriggerServerEvent("CR.PV:Transfer", closestPlayer, vehicleId)
-                        --print("Requested transfer of vehicle " .. vehicleId .. " to " .. closestPlayer)
+                        print("Requested transfer of vehicle " .. vehicleId .. " to " .. closestPlayer)
                     end
                 end
             else
@@ -88,12 +88,12 @@ Citizen.CreateThread(function()
 
                         repeat
                             Wait(0)
-                            --print("Awaiting for new vehicle to exist")
+                            print("Awaiting for new vehicle to exist")
                         until DoesEntityExist(newVehicle)
 
                         SetVehicleProperties(newVehicle, vehicleData)
 
-                        --print("Spawning vehicle " .. vehicleId)
+                        print("Spawning vehicle " .. vehicleId)
                     end
                 else
                     warn("Data for vehicle " .. vehicleId .. " is of unknown type: " .. type(vehicleData))
@@ -121,7 +121,7 @@ RegisterNetEvent("CR.PV:TransferRequest", function(vehicleId)
         end
     until NetworkHasControlOfEntity(vehicle)
 
-    --print("Transfer of vehicle " .. vehicleId .. " complete.")
+    print("Transfer of vehicle " .. vehicleId .. " complete.")
 end)
 
 function IsVehiclePersistent(vehicle)
