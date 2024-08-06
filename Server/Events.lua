@@ -36,7 +36,7 @@ RegisterNetEvent("CR.PV:Update", function(vehicleNetId, properties)
 
     UpdateVehicle(vehicle, properties)
 
-    Print("Updated vehicle " .. GetVehicleUID(vehicle))
+    --Print("Updated vehicle " .. GetVehicleUID(vehicle))
 end)
 
 RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
@@ -49,7 +49,7 @@ RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
 
     ForgetVehicle(vehicle)
 
-    Print("Forgot vehicle " .. GetVehicleUID(vehicle))
+    --Print("Forgot vehicle " .. GetVehicleUID(vehicle))
 end)
 
 --[[

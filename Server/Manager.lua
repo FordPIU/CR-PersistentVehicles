@@ -8,16 +8,16 @@ function LoadVehicleData(resourceName)
 
     if vehiclesJson ~= nil then
         Vehicles = TrimVehiclesJson(vehiclesJson)
-        Print("Loaded vehicles.json")
+        --Print("Loaded vehicles.json")
     else
         Warn("No file: vehicles.json")
     end
 end
 
 function SaveVehicleData(resourceName)
-    Print("Saving data...")
+    --Print("Saving data...")
     SaveResourceFile(resourceName or GetCurrentResourceName(), "vehicles.json", json.encode(Vehicles), -1)
-    Print("Saved data successfully.")
+    --Print("Saved data successfully.")
 end
 
 function SaveAndRefreshClients()

@@ -327,21 +327,21 @@ function ForgetVehicle(vehicle)
         NetworkRequestControlOfEntity(vehicle)
     until NetworkHasControlOfEntity(vehicle)
 
-    Print("Has control")
+    --Print("Has control")
 
     SetVehicleSpawningPaused(vehicleUID, true)
     TriggerServerEvent("CR.PV:Forget", VehToNet(vehicle))
-    Print("Vehicle marked for forget")
+    --Print("Vehicle marked for forget")
 
     repeat
         Wait(0)
-        print(type(GetVehicles()[vehicleUID]))
+        --Print(type(GetVehicles()[vehicleUID]))
     until type(GetVehicles()[vehicleUID]) ~= "table"
 
-    Print("Vehicle data now of type " .. type(GetVehicles()[vehicleUID]) ~= "table")
+    --Print("Vehicle data now of type " .. type(GetVehicles()[vehicleUID]) ~= "table")
     DeleteEntity(vehicle)
     SetVehicleSpawningPaused(vehicleUID, false)
-    Print("Vehicle deleted")
+    --Print("Vehicle deleted")
 
     return true
 end
@@ -353,7 +353,7 @@ function GetPlateInfoByVehicleId(vehicleId)
         table.insert(result, part)
     end
 
-    print(result[1], result[2])
+    --Print(result[1], result[2])
 
     return result[1], result[2]
 end
