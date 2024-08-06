@@ -21,10 +21,35 @@ Citizen.CreateThread(function()
                     until NetworkHasControlOfEntity(veh)
                 end
 
+<<<<<<< Updated upstream
                 -- This is just kinda ugly, fuck networking
                 SetVehicleProperties(veh, entityState.NeedsPropertiesSet)
                 TriggerServerEvent("CR.PV:PropertiesSet", NetworkGetNetworkIdFromEntity(veh))
                 print("Set properties for persistent vehicle" .. veh)
+=======
+                    if distance <= Config.SpawnDistance and GetPlayerClosestToCoord(vehiclePos) == GetPlayerServerId(PlayerId()) and not DoesPersistentVehicleExists(vehicleId) then
+                        RequestModel(vehicleData.model)
+                        repeat
+                            Wait(0)
+                        until HasModelLoaded(vehicleData.model)
+
+                        local newVehicle = CreateVehicle(vehicleData.model, vehiclePos.x, vehiclePos.y, vehiclePos.z,
+                            vehicleData.matrix
+                            .heading, true, false)
+
+                        repeat
+                            Wait(0)
+                            --print("Awaiting for new vehicle to exist")
+                        until DoesEntityExist(newVehicle)
+
+                        SetVehicleProperties(newVehicle, vehicleData)
+
+                        --print("Spawning vehicle " .. vehicleId)
+                    end
+                else
+                    warn("Data for vehicle " .. vehicleId .. " is of unknown type: " .. type(vehicleData))
+                end
+>>>>>>> Stashed changes
             end
 
             -- Yay, merging code that already doesnt work so that more of it doesnt work
