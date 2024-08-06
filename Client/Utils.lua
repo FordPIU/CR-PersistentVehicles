@@ -317,7 +317,7 @@ function DoesPersistentVehicleExists(vehicleId)
 end
 
 function ForgetVehicle(vehicle)
-    if GetPlayerClosestToEntity(vehicle) ~= PlayerId() then return false end
+    if GetPlayerClosestToEntity(vehicle) ~= GetPlayerServerId(PlayerId()) then return false end
 
     local vehicleUID = GetVehicleUID(vehicle)
 
@@ -351,3 +351,9 @@ end)
 
 exports("GetVehicleUID", GetVehicleUID)
 exports("ForgetVehicle", ForgetVehicle)
+
+RegisterCommand("dvall", function()
+    for _, v in ipairs(GetGamePool("CVehicle")) do
+        DeleteEntity(v)
+    end
+end, false)

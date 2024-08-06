@@ -27,7 +27,9 @@ Citizen.CreateThread(function()
             local ped = GetPlayerPed(playerId)
             local coord = GetEntityCoords(ped)
 
-            playerList[playerId] = coord
+            if DoesEntityExist(ped) and coord ~= nil then
+                playerList[playerId] = coord
+            end
         end
 
         TriggerClientEvent("CR.PV:Playerlist", -1, playerList)
