@@ -316,6 +316,36 @@ function DoesPersistentVehicleExists(vehicleId)
     return false
 end
 
+function ForgetVehicle(vehicle)
+    local vehicleUID = GetVehicleUID(vehicle)
+
+    repeat
+        Wait(10)
+        NetworkRequestControlOfEntity(vehicle)
+    until NetworkHasControlOfEntity(vehicle)
+
+    Print("Has control")
+
+    SetVehicleSpawningPaused(vehicleUID, true)
+    TriggerServerEvent("CR.PV:Forget", VehToNet(vehicle))
+    Print("Vehicle marked for forget")
+
+    repeat
+        Wait(0)
+        print(type(GetVehicles()[vehicleUID]))
+    until type(GetVehicles()[vehicleUID]) ~= "table"
+
+    Print("Vehicle data now of type " .. type(GetVehicles()[vehicleUID]) ~= "table")
+    DeleteEntity(vehicle)
+    SetVehicleSpawningPaused(vehicleUID, false)
+    Print("Vehicle deleted")
+
+    return true
+end
+
 RegisterNetEvent("CR.PV:Playerlist", function(playerList)
     PlayerList = playerList
 end)
+
+exports("GetVehicleUID", GetVehicleUID)
+exports("ForgetVehicle", ForgetVehicle)

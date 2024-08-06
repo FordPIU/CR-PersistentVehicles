@@ -17,7 +17,7 @@ local function duplicationDetection(vehicle)
 
             anyDuplicates = true
 
-            print("Duplicated vehicleId located " .. vehicleId .. ", " .. vehicle2Id)
+            Print("Duplicated vehicleId located " .. vehicleId .. ", " .. vehicle2Id)
         end
     end
 
@@ -33,16 +33,16 @@ Citizen.CreateThread(function()
 
         for _, vehicle in ipairs(GetGamePool("CVehicle")) do
             if not DoesEntityExist(vehicle) or IsEntityDead(vehicle) then -- I dont even know why they would be in the pool if they meet these conditions, but fivem
-                warn(
+                Warn(
                     "FiveM is fucking stupid and attempted to tick on a entity that is dead or doesnt even exist. Coolio.")
             else
-                if IsVehiclePersistent(vehicle) and NetworkHasControlOfEntity(vehicle) then
+                if IsVehiclePersistent(vehicle) and NetworkHasControlOfEntity(vehicle) and not IsVehicleSpawningPaused(GetVehicleUID(vehicle)) then
                     if not duplicationDetection(vehicle) then
                         updateTick(vehicle)
 
                         scopeVehicles[GetVehicleUID(vehicle)] = vehicle
 
-                        --print("Updated vehicle " .. GetVehicleUID(vehicle) .. " and added to scope.")
+                        --Print("Updated vehicle " .. GetVehicleUID(vehicle) .. " and added to scope.")
                     end
                 end
             end
@@ -63,40 +63,42 @@ Citizen.CreateThread(function()
                             updateTick(vehicle)
                             DeleteEntity(vehicle)
 
-                            print("Despawning vehicle " .. vehicleId .. " due to distance.")
+                            Print("Despawning vehicle " .. vehicleId .. " due to distance.")
                         end
                     else
                         TriggerServerEvent("CR.PV:Transfer", closestPlayer, vehicleId)
-                        print("Requested transfer of vehicle " .. vehicleId .. " to " .. closestPlayer)
+                        Print("Requested transfer of vehicle " .. vehicleId .. " to " .. closestPlayer)
                     end
                 end
             else
                 if type(vehicleData) == "table" then
-                    local vehiclePosNV3 = vehicleData.matrix.position -- NV3 = Not Vector3
-                    local vehiclePos = vector3(vehiclePosNV3.x, vehiclePosNV3.y, vehiclePosNV3.z)
-                    local distance = #(playerPos - vehiclePos)
+                    if not IsVehicleSpawningPaused(vehicleId) then
+                        local vehiclePosNV3 = vehicleData.matrix.position -- NV3 = Not Vector3
+                        local vehiclePos = vector3(vehiclePosNV3.x, vehiclePosNV3.y, vehiclePosNV3.z)
+                        local distance = #(playerPos - vehiclePos)
 
-                    if distance <= Config.SpawnDistance and GetPlayerClosestToCoord(vehiclePos) == GetPlayerServerId(PlayerId()) and not DoesPersistentVehicleExists(vehicleId) then
-                        RequestModel(vehicleData.model)
-                        repeat
-                            Wait(0)
-                        until HasModelLoaded(vehicleData.model)
+                        if distance <= Config.SpawnDistance and GetPlayerClosestToCoord(vehiclePos) == GetPlayerServerId(PlayerId()) and not DoesPersistentVehicleExists(vehicleId) then
+                            RequestModel(vehicleData.model)
+                            repeat
+                                Wait(0)
+                            until HasModelLoaded(vehicleData.model)
 
-                        local newVehicle = CreateVehicle(vehicleData.model, vehiclePos.x, vehiclePos.y, vehiclePos.z,
-                            vehicleData.matrix
-                            .heading, true, false)
+                            local newVehicle = CreateVehicle(vehicleData.model, vehiclePos.x, vehiclePos.y, vehiclePos.z,
+                                vehicleData.matrix
+                                .heading, true, false)
 
-                        repeat
-                            Wait(0)
-                            print("Awaiting for new vehicle to exist")
-                        until DoesEntityExist(newVehicle)
+                            repeat
+                                Wait(0)
+                                Print("Awaiting for new vehicle to exist")
+                            until DoesEntityExist(newVehicle)
 
-                        SetVehicleProperties(newVehicle, vehicleData)
+                            SetVehicleProperties(newVehicle, vehicleData)
 
-                        print("Spawning vehicle " .. vehicleId)
+                            Print("Spawning vehicle " .. vehicleId)
+                        end
                     end
                 else
-                    warn("Data for vehicle " .. vehicleId .. " is of unknown type: " .. type(vehicleData))
+                    Warn("Data for vehicle " .. vehicleId .. " is of unknown type: " .. type(vehicleData))
                 end
             end
         end
@@ -106,6 +108,8 @@ end)
 TriggerServerEvent("CR.PV:NewPlayer")
 RegisterNetEvent("CR.PV:Vehicles", function(vehicles)
     Vehicles = vehicles
+
+    Print("Vehicles table updated from server.")
 end)
 RegisterNetEvent("CR.PV:TransferRequest", function(vehicleId)
     local vehicle = GetVehicleFromVehicleId(vehicleId) -- This might be more expensive than just storing this shit in the loop above
@@ -116,14 +120,18 @@ RegisterNetEvent("CR.PV:TransferRequest", function(vehicleId)
         NetworkRequestControlOfEntity(vehicle)
 
         if GetGameTimer() >= timeout then
-            warn("Timeout for transfer request of vehicle " .. vehicleId)
+            Warn("Timeout for transfer request of vehicle " .. vehicleId)
             return
         end
     until NetworkHasControlOfEntity(vehicle)
 
-    print("Transfer of vehicle " .. vehicleId .. " complete.")
+    Print("Transfer of vehicle " .. vehicleId .. " complete.")
 end)
 
 function IsVehiclePersistent(vehicle)
     if Vehicles[GetVehicleUID(vehicle)] ~= nil then return true else return false end
+end
+
+function GetVehicles()
+    return Vehicles
 end

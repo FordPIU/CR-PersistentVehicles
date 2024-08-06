@@ -33,3 +33,5 @@ Citizen.CreateThread(function()
         TriggerClientEvent("CR.PV:Playerlist", -1, playerList)
     end
 end)
+
+exports("GetVehicleUID", GetVehicleUID)

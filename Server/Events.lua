@@ -30,26 +30,26 @@ RegisterNetEvent("CR.PV:Update", function(vehicleNetId, properties)
     local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
 
     if not DoesEntityExist(vehicle) then
-        warn("Event call to forget vehicle, but net id was invalid and the vehicle doesnt exist.")
+        Warn("Event call to forget vehicle, but net id was invalid and the vehicle doesnt exist.")
         return
     end
 
     UpdateVehicle(vehicle, properties)
 
-    print("Updated vehicle " .. GetVehicleUID(vehicle))
+    Print("Updated vehicle " .. GetVehicleUID(vehicle))
 end)
 
 RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
     local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
 
     if not DoesEntityExist(vehicle) then
-        warn("Event call to forget vehicle, but net id was invalid and the vehicle doesnt exist.")
+        Warn("Event call to forget vehicle, but net id was invalid and the vehicle doesnt exist.")
         return
     end
 
     ForgetVehicle(vehicle)
 
-    print("Forgot vehicle " .. GetVehicleUID(vehicle))
+    Print("Forgot vehicle " .. GetVehicleUID(vehicle))
 end)
 
 --[[

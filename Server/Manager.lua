@@ -1,20 +1,4 @@
 local Vehicles = {}
-local Vehicles_Metatable = {
-    __index = function(table, key)
-        return rawget(table, key)
-    end,
-
-    __newindex = function(table, key, value)
-        local oldValue = rawget(table, key)
-        if oldValue ~= value then
-            rawset(table, key, value) -- Actually set the new value
-            SaveVehicleData()
-            TriggerClientEvent("CR.PV:Vehicles", -1, Vehicles)
-        end
-    end
-}
-
-setmetatable(Vehicles, Vehicles_Metatable)
 
 --[[
     Data Load/Save
@@ -25,16 +9,21 @@ function LoadVehicleData(resourceName)
     if vehiclesJson ~= nil then
         Vehicles = TrimVehiclesJson(vehiclesJson)
         setmetatable(Vehicles, Vehicles_Metatable) -- Just to make sure the new table ref doesnt fuck it
-        print("Loaded vehicles.json")
+        Print("Loaded vehicles.json")
     else
-        warn("No file: vehicles.json")
+        Warn("No file: vehicles.json")
     end
 end
 
 function SaveVehicleData(resourceName)
-    print("Saving data...")
+    Print("Saving data...")
     SaveResourceFile(resourceName or GetCurrentResourceName(), "vehicles.json", json.encode(Vehicles), -1)
-    print("Saved data successfully.")
+    Print("Saved data successfully.")
+end
+
+function SaveAndRefreshClients()
+    SaveVehicleData()
+    TriggerClientEvent("CR.PV:Vehicles", -1, Vehicles)
 end
 
 --[[
@@ -42,10 +31,12 @@ end
 ]]
 function UpdateVehicle(vehicle, properties)
     Vehicles[GetVehicleUID(vehicle)] = properties
+    SaveAndRefreshClients()
 end
 
 function ForgetVehicle(vehicle)
     Vehicles[GetVehicleUID(vehicle)] = nil
+    SaveAndRefreshClients()
 end
 
 function GetVehicles()
