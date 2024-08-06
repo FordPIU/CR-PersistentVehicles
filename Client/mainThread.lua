@@ -1,21 +1,28 @@
 local Vehicles = {}
 
-local function updateTick(vehicle)
-    if not IsVehiclePersistent(vehicle) then return false end
-    if not NetworkHasControlOfEntity(vehicle) then return false end
-    if IsVehicleSpawningPaused(GetVehicleUID(vehicle)) then return false end
+local function fullUpdateTick(vehicle, vehicleId)
+    if IsVehicleSpawningPaused(vehicleId) then return end
 
-    TriggerServerEvent("CR.PV:Update", NetworkGetNetworkIdFromEntity(vehicle), GetVehicleProperties(vehicle))
+    TriggerServerEvent("CR.PV:Update", VehToNet(vehicle), GetVehicleProperties(vehicle))
+end
 
-    return true
+local function locationUpdateTick(vehicle, vehicleId)
+    if IsVehicleSpawningPaused(vehicleId) then return end
+    local vehicleData = Vehicles[vehicleId]
+
+    if type(vehicleData) ~= "table" then
+        fullUpdateTick(vehicle, vehicleId)
+        return
+    end
+
+    local matrix = GetEntityMatrixTable(vehicle)
+    vehicleData.matrix = matrix
+
+    TriggerServerEvent("CR.PV:Update", VehToNet(vehicle), vehicleData)
 end
 
 local function spawnTick(vehicleId, vehicleData, playerPos)
-    if type(vehicleData) ~= "table" then
-        Warn("Data for vehicle " .. vehicleId .. " is of unknown type: " .. type(vehicleData))
-        return false
-    end
-    if IsVehicleSpawningPaused(vehicleId) then return false end
+    if IsVehicleSpawningPaused(vehicleId) then return end
 
     local vehiclePosNV3 = vehicleData.matrix.position -- NV3 = Not Vector3
     local vehiclePos = vector3(vehiclePosNV3.x, vehiclePosNV3.y, vehiclePosNV3.z)
@@ -32,27 +39,17 @@ local function spawnTick(vehicleId, vehicleData, playerPos)
             .heading, true, false)
         SetVehicleProperties(newVehicle, vehicleData, vehicleId)
         --print("Spawning vehicle " .. vehicleId)
-
-        return true
     end
-
-    return false
 end
 
-local function despawnTick(vehicleId, playerPos)
-    local vehicle = GetVehicleFromVehicleId(vehicleId)
-    local currentOwner = NetworkGetEntityOwner(vehicle)
+local function despawnTick(vehicle, vehicleId, playerPos)
     local distance = #(GetEntityCoords(vehicle) - playerPos)
 
-    if distance <= Config.DespawnDistance then
-        return false
-    else                                                             --print(distance, vehicle, GetEntityCoords(vehicle), playerPos) end
-        if currentOwner ~= PlayerId() then return false end
-
+    if distance > Config.DespawnDistance then
         local closestPlayer = GetPlayerClosestToEntity(vehicle)
 
         if closestPlayer == GetPlayerServerId(PlayerId()) then
-            updateTick(vehicle)
+            fullUpdateTick(vehicle, vehicleId)
             DeleteEntity(vehicle)
             --print("Despawning vehicle " .. vehicleId .. " due to distance.")
         else
@@ -62,46 +59,42 @@ local function despawnTick(vehicleId, playerPos)
     end
 end
 
-local function duplicateTick(vehicleId, vehicle)
-    for _, v in ipairs(GetGamePool("CVehicle")) do
-        if DoesEntityExist(v) and GetVehicleUID(v) == vehicleId and v ~= vehicle then
-            DeleteEntity(v)
-            DeleteEntity(vehicle)
-        end
-    end
-end
-
 Citizen.CreateThread(function()
+    local i = 0
     while true do
-        Wait(1000) -- 1 TPS
-
-        local playerPos = GetEntityCoords(PlayerPedId())
-
-        if playerPos ~= nil then
-            for _, vehicle in ipairs(GetGamePool("CVehicle")) do
-                if DoesEntityExist(vehicle) and IsVehiclePersistent(vehicle) then
-                    local vehicleId = GetVehicleUID(vehicle)
-
-                    duplicateTick(vehicleId, vehicle)
-                    updateTick(vehicle)
-                end
-            end
-        end
-    end
-end)
-
-Citizen.CreateThread(function()
-    while true do
-        Wait(5000) -- .25 TPS
+        Wait(1000)
 
         local playerPos = GetEntityCoords(PlayerPedId())
 
         if playerPos ~= nil then
             for vehicleId, vehicleData in pairs(Vehicles) do
-                spawnTick(vehicleId, vehicleData, playerPos)
-                despawnTick(vehicleId, playerPos)
+                if type(vehicleData) == "table" then
+                    local vehicle = GetVehicleFromVehicleId(vehicleId)
+
+                    if vehicle ~= nil then
+                        if NetworkHasControlOfEntity(vehicle) then
+                            if i == 10 then
+                                fullUpdateTick(vehicle, vehicleId)
+                                i = 0
+                            else
+                                locationUpdateTick(vehicle, vehicleId)
+                            end
+                            despawnTick(vehicle, vehicleId, playerPos)
+                        end
+                    else
+                        spawnTick(vehicleId, vehicleData, playerPos)
+                    end
+                elseif vehicleData == true then
+                    local vehicle = GetVehicleFromVehicleId(vehicleId)
+
+                    if NetworkHasControlOfEntity(vehicle) then
+                        fullUpdateTick(vehicle, vehicleId)
+                    end
+                end
             end
         end
+
+        i += 1
     end
 end)
 
