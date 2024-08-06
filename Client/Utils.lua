@@ -317,6 +317,8 @@ function DoesPersistentVehicleExists(vehicleId)
 end
 
 function ForgetVehicle(vehicle)
+    if GetPlayerClosestToEntity(vehicle) ~= PlayerId() then return false end
+
     local vehicleUID = GetVehicleUID(vehicle)
 
     repeat

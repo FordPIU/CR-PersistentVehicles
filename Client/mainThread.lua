@@ -109,7 +109,7 @@ TriggerServerEvent("CR.PV:NewPlayer")
 RegisterNetEvent("CR.PV:Vehicles", function(vehicles)
     Vehicles = vehicles
 
-    Print("Vehicles table updated from server.")
+    --Print("Vehicles table updated from server.")
 end)
 RegisterNetEvent("CR.PV:TransferRequest", function(vehicleId)
     local vehicle = GetVehicleFromVehicleId(vehicleId) -- This might be more expensive than just storing this shit in the loop above
