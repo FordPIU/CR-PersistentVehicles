@@ -8,7 +8,6 @@ function LoadVehicleData(resourceName)
 
     if vehiclesJson ~= nil then
         Vehicles = TrimVehiclesJson(vehiclesJson)
-        setmetatable(Vehicles, Vehicles_Metatable) -- Just to make sure the new table ref doesnt fuck it
         Print("Loaded vehicles.json")
     else
         Warn("No file: vehicles.json")
