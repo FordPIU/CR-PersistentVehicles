@@ -1,24 +1,9 @@
 local Vehicles = {}
 
-local function fullUpdateTick(vehicle, vehicleId)
+local function updateTick(vehicle, vehicleId)
     if IsVehicleSpawningPaused(vehicleId) then return end
 
     TriggerServerEvent("CR.PV:Update", VehToNet(vehicle), GetVehicleProperties(vehicle))
-end
-
-local function locationUpdateTick(vehicle, vehicleId)
-    if IsVehicleSpawningPaused(vehicleId) then return end
-    local vehicleData = Vehicles[vehicleId]
-
-    if type(vehicleData) ~= "table" then
-        fullUpdateTick(vehicle, vehicleId)
-        return
-    end
-
-    local matrix = GetEntityMatrixTable(vehicle)
-    vehicleData.matrix = matrix
-
-    TriggerServerEvent("CR.PV:Update", VehToNet(vehicle), vehicleData)
 end
 
 local function spawnTick(vehicleId, vehicleData, playerPos)
@@ -49,7 +34,7 @@ local function despawnTick(vehicle, vehicleId, playerPos)
         local closestPlayer = GetPlayerClosestToEntity(vehicle)
 
         if closestPlayer == GetPlayerServerId(PlayerId()) then
-            fullUpdateTick(vehicle, vehicleId)
+            updateTick(vehicle, vehicleId)
             DeleteEntity(vehicle)
             --print("Despawning vehicle " .. vehicleId .. " due to distance.")
         else
@@ -60,41 +45,37 @@ local function despawnTick(vehicle, vehicleId, playerPos)
 end
 
 Citizen.CreateThread(function()
-    local i = 0
     while true do
         Wait(1000)
 
+        local numOfUpdatedVehicles = 0
         local playerPos = GetEntityCoords(PlayerPedId())
 
-        if playerPos ~= nil then
-            for vehicleId, vehicleData in pairs(Vehicles) do
-                if type(vehicleData) == "table" then
-                    local vehicle = GetVehicleFromVehicleId(vehicleId)
+        for vehicleId, vehicleData in pairs(Vehicles) do
+            if type(vehicleData) == "table" then
+                local vehicle = GetVehicleFromVehicleId(vehicleId)
 
-                    if vehicle ~= nil then
-                        if NetworkHasControlOfEntity(vehicle) then
-                            if i == 10 then
-                                fullUpdateTick(vehicle, vehicleId)
-                                i = 0
-                            else
-                                locationUpdateTick(vehicle, vehicleId)
-                            end
-                            despawnTick(vehicle, vehicleId, playerPos)
-                        end
-                    else
-                        spawnTick(vehicleId, vehicleData, playerPos)
-                    end
-                elseif vehicleData == true then
-                    local vehicle = GetVehicleFromVehicleId(vehicleId)
-
+                if vehicle ~= nil then
                     if NetworkHasControlOfEntity(vehicle) then
-                        fullUpdateTick(vehicle, vehicleId)
+                        updateTick(vehicle, vehicleId)
+                        despawnTick(vehicle, vehicleId, playerPos)
+                        numOfUpdatedVehicles += 1
+
+                        if numOfUpdatedVehicles >= 10 then
+                            numOfUpdatedVehicles = 0
+                        end
                     end
+                else
+                    spawnTick(vehicleId, vehicleData, playerPos)
+                end
+            elseif vehicleData == true then
+                local vehicle = GetVehicleFromVehicleId(vehicleId)
+
+                if NetworkHasControlOfEntity(vehicle) then
+                    updateTick(vehicle, vehicleId)
                 end
             end
         end
-
-        i += 1
     end
 end)
 
