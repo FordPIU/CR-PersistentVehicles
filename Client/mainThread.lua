@@ -1,9 +1,10 @@
 local Vehicles = {}
+local NetworkStage = {}
 
 local function updateTick(vehicle, vehicleId)
     if IsVehicleSpawningPaused(vehicleId) then return end
 
-    TriggerServerEvent("CR.PV:Update", VehToNet(vehicle), GetVehicleProperties(vehicle))
+    NetworkStage[VehToNet(vehicle)] = GetVehicleProperties(vehicle)
 end
 
 local function spawnTick(vehicleId, vehicleData, playerPos)
@@ -76,14 +77,15 @@ Citizen.CreateThread(function()
                 end
             end
         end
+
+        TriggerServerEvent("CR.PV:NetworkedUpdate", NetworkStage)
+        NetworkStage = {}
     end
 end)
 
 TriggerServerEvent("CR.PV:NewPlayer")
 RegisterNetEvent("CR.PV:Vehicles", function(vehicles)
     Vehicles = vehicles
-
-    --print("Vehicles table updated from server.")
 end)
 RegisterNetEvent("CR.PV:TransferRequest", function(vehicleId)
     local vehicle = GetVehicleFromVehicleId(vehicleId) -- This might be more expensive than just storing this shit in the loop above

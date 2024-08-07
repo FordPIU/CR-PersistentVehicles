@@ -1,5 +1,5 @@
 Config = {
     Debug = false,
-    SpawnDistance = 500,
-    DespawnDistance = 500
+    SpawnDistance = 300,
+    DespawnDistance = 300
 }

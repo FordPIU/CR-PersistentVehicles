@@ -39,6 +39,19 @@ RegisterNetEvent("CR.PV:Update", function(vehicleNetId, properties)
     --Print("Updated vehicle " .. GetVehicleUID(vehicle))
 end)
 
+RegisterNetEvent("CR.PV:NetworkedUpdate", function(networkedData)
+    for vehicleNetId, properties in pairs(networkedData) do
+        local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
+
+        if not DoesEntityExist(vehicle) then
+            Warn("Event call to forget vehicle, but net id was invalid and the vehicle doesnt exist.")
+            return
+        end
+
+        UpdateVehicle(vehicle, properties)
+    end
+end)
+
 RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
     local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
 

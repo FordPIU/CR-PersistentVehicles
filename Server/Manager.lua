@@ -20,22 +20,17 @@ function SaveVehicleData(resourceName)
     --Print("Saved data successfully.")
 end
 
-function SaveAndRefreshClients()
-    SaveVehicleData()
-    TriggerClientEvent("CR.PV:Vehicles", -1, Vehicles)
-end
-
 --[[
     Vehicle State Management
 ]]
 function UpdateVehicle(vehicle, properties)
     Vehicles[GetVehicleUID(vehicle)] = properties
-    SaveAndRefreshClients()
+    SaveVehicleData()
 end
 
 function ForgetVehicle(vehicle)
     Vehicles[GetVehicleUID(vehicle)] = nil
-    SaveAndRefreshClients()
+    SaveVehicleData()
 end
 
 function GetVehicles()
@@ -45,3 +40,10 @@ end
 function IsVehiclePersistent(vehicle)
     if Vehicles[GetVehicleUID(vehicle)] ~= nil then return true else return false end
 end
+
+Citizen.CreateThread(function()
+    while true do
+        Wait(1000)
+        TriggerClientEvent("CR.PV:Vehicles", -1, Vehicles)
+    end
+end)
