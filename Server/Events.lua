@@ -75,8 +75,14 @@ AddEventHandler("entityCreated", function(entity)
     end
 end)
 
+DO_NOT_RESPAWN = {}
 AddEventHandler("entityRemoved", function(entity)
     if GetEntityType(entity) == 2 then
+        if DO_NOT_RESPAWN[entity] then
+            DO_NOT_RESPAWN[entity] = nil
+            return
+        end
+
         local vehicleId = GetVehicleUID(entity)
 
         if Entity(entity).state.isPersistent then

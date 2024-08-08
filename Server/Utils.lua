@@ -24,13 +24,28 @@ end
 RegisterCommand("dvall", function()
     print("Deleting all vehicles")
     for _, v in ipairs(GetAllVehicles()) do
-        GlobalState.spVehicles[GetVehicleUID(v)] = nil
         DeleteEntity(v)
         print("Deleted vehicle with entity ID: " .. v)
     end
 end, false)
 
-RegisterCommand("gssp_reset", function()
-    print("Resetting Spawned Persistent Vehicle Global State")
-    GlobalState.spVehicles = {}
+RegisterCommand("dvallnr", function()
+    print("Deleting all vehicles without respawning")
+    for _, v in ipairs(GetAllVehicles()) do
+        DO_NOT_RESPAWN[v] = true
+        DeleteEntity(v)
+        print("Deleted vehicle with entity ID: " .. v)
+    end
 end, false)
+
+function GetRandomPlayerId()
+    local players = {}
+
+    for _, playerId in pairs(GetPlayers()) do
+        players[#players + 1] = playerId
+    end
+
+    if #players == 0 then return nil end
+
+    return players[math.random(1, #players)]
+end
