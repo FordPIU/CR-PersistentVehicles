@@ -13,6 +13,13 @@ function LoadVehicleData(resourceName)
         warn("No file: vehicles.json found while loading vehicle data")
     end
 
+    print("Deleting all spawned vehicles")
+    for _, v in ipairs(GetAllVehicles()) do
+        DO_NOT_RESPAWN[v] = true
+        DeleteEntity(v)
+        print("Deleted vehicle with entity ID: " .. v)
+    end
+
     print("Spawning all persistent vehicles")
     SpawnAllPersistentVehicles()
 end
