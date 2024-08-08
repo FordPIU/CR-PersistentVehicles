@@ -13,9 +13,6 @@ function LoadVehicleData(resourceName)
         warn("No file: vehicles.json found while loading vehicle data")
     end
 
-    print("Deleting all persistent vehicles")
-    DeleteAllPersistentVehicles()
-
     print("Spawning all persistent vehicles")
     SpawnAllPersistentVehicles()
 end
@@ -89,51 +86,6 @@ function IsVehiclePersistent(vehicle)
     end
 
     return isPersistent
-end
-
-function DeleteAllPersistentVehicles()
-    print("Deleting all persistent vehicles")
-
-    local playerId = GetRandomPlayerId()
-    local playerPed = GetPlayerPed(playerId)
-
-    repeat
-        Wait(500)
-        playerId = GetRandomPlayerId()
-        playerPed = GetPlayerPed(playerId)
-        print("Waiting for valid player ...")
-    until playerId ~= nil and DoesEntityExist(playerPed)
-
-    if playerId == nil or not DoesEntityExist(playerPed) then
-        error("Failed to find a valid player ped to use for deletion process")
-        return
-    end
-
-    local originalPlayerCoords = GetEntityCoords(playerPed)
-    print("Freezing player ped at coordinates: " .. tostring(originalPlayerCoords))
-    FreezeEntityPosition(playerPed, true)
-
-    for vehicleId, vehicleData in pairs(Vehicles) do
-        local pos = vehicleData.matrix.position
-        print("Setting player ped coordinates to vehicle position: " .. tostring(pos))
-
-        SetEntityCoords(playerPed, pos.x, pos.y, pos.z, true, false, false, false)
-
-        for _, v in ipairs(GetAllVehicles()) do
-            if GetVehicleUID(v) == vehicleId then
-                DO_NOT_RESPAWN[v] = true
-                print("Deleting vehicle with UID: " .. vehicleId)
-                DeleteEntity(v)
-            else
-                warn("Vehicle with UID: " .. vehicleId .. " not found in current vehicle pool")
-            end
-        end
-    end
-
-    print("Restoring player ped to original coordinates: " .. tostring(originalPlayerCoords))
-    SetEntityCoords(playerPed, originalPlayerCoords[1], originalPlayerCoords[2], originalPlayerCoords[3], true, false,
-        false, false)
-    FreezeEntityPosition(playerPed, false)
 end
 
 function SpawnAllPersistentVehicles()
