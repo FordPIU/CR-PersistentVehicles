@@ -59,5 +59,11 @@ AddEventHandler("entityCreated", function(entity)
 end)
 
 AddEventHandler("entityRemoved", function(entity)
+    if GetEntityType(entity) == 2 then
+        local vehicleId = GetVehicleUID(entity)
 
+        if Entity(entity).state.isPersistent then
+            SpawnVehicle(vehicleId)
+        end
+    end
 end)

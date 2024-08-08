@@ -25,6 +25,22 @@ end
 --[[
     Vehicle State Management
 ]]
+function SpawnVehicle(vehicleId)
+    if GlobalState.spVehicles[vehicleId] == nil then
+        local vehicleData = Vehicles[vehicleId]
+        local position = vehicleData.matrix.position
+        local vehicle = CreateVehicleServerSetter(vehicleData.model, vehicleData.type, position.x, position.y,
+            position.z, vehicleData.matrix.heading)
+
+        Entity(vehicle).state.isPersistent = true
+        Entity(vehicle).state.pProperties = vehicleData
+        Entity(vehicle).state.nProperties = true
+        Entity(vehicle).state.pId = vehicleId
+
+        GlobalState.spVehicles[vehicleId] = true
+    end
+end
+
 function NewVehicle(vehicle)
     local vehicleId = GetVehicleUID(vehicle)
 
@@ -73,18 +89,7 @@ function DeleteAllPersistentVehicles()
 end
 
 function SpawnAllPersistentVehicles()
-    for vehicleId, vehicleData in pairs(Vehicles) do
-        if GlobalState.spVehicles[vehicleId] == nil then
-            local position = vehicleData.matrix.position
-            local vehicle = CreateVehicleServerSetter(vehicleData.model, vehicleData.type, position.x, position.y,
-                position.z, vehicleData.matrix.heading)
-
-            Entity(vehicle).state.isPersistent = true
-            Entity(vehicle).state.pProperties = vehicleData
-            Entity(vehicle).state.nProperties = true
-            Entity(vehicle).state.pId = vehicleId
-
-            GlobalState.spVehicles[vehicleId] = true
-        end
+    for vehicleId, _ in pairs(Vehicles) do
+        SpawnVehicle(vehicleId)
     end
 end
