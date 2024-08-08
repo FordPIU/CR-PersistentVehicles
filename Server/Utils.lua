@@ -2,8 +2,6 @@ function GetVehicleUID(vehicle)
     local plateText = GetVehicleNumberPlateText(vehicle)
     local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
 
-    print("Getting UID for vehicle with plate: " .. plateText .. " and plate index: " .. plateIndex)
-
     return plateIndex .. "-" .. plateText
 end
 
