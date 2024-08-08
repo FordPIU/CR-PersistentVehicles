@@ -8,42 +8,83 @@ function LoadVehicleData(resourceName)
 
     if vehiclesJson ~= nil then
         Vehicles = TrimVehiclesJson(vehiclesJson)
-        --Print("Loaded vehicles.json")
     else
-        Warn("No file: vehicles.json")
+        warn("No file: vehicles.json")
     end
+
+    GlobalState.spVehicles = GlobalState.spVehicles or {}
+
+    DeleteAllPersistentVehicles()
+    SpawnAllPersistentVehicles()
 end
 
 function SaveVehicleData(resourceName)
-    --Print("Saving data...")
     SaveResourceFile(resourceName or GetCurrentResourceName(), "vehicles.json", json.encode(Vehicles), -1)
-    --Print("Saved data successfully.")
 end
 
 --[[
     Vehicle State Management
 ]]
+function NewVehicle(vehicle)
+    local vehicleId = GetVehicleUID(vehicle)
+
+    Vehicles[vehicleId] = true
+
+    Entity(vehicle).state.isPersistent = true
+    Entity(vehicle).state.pId = vehicleId
+    Entity(vehicle).state.pProperties = nil
+end
+
 function UpdateVehicle(vehicle, properties)
     Vehicles[GetVehicleUID(vehicle)] = properties
+
+    Entity(vehicle).state.pProperties = properties
     SaveVehicleData()
 end
 
 function ForgetVehicle(vehicle)
-    Vehicles[GetVehicleUID(vehicle)] = nil
+    local vehicleId = GetVehicleUID(vehicle)
+
+    Vehicles[vehicleId] = nil
+
+    Entity(vehicle).state.isPersistent = false
+    DeleteEntity(vehicle)
     SaveVehicleData()
 end
 
-function GetVehicles()
-    return Vehicles
-end
-
 function IsVehiclePersistent(vehicle)
-    if Vehicles[GetVehicleUID(vehicle)] ~= nil then return true else return false end
+    if Vehicles[GetVehicleUID(vehicle)] then return true else return false end
 end
 
-Citizen.CreateThread(function()
-    while true do
-        Wait(1000)
-        TriggerClientEvent("CR.PV:Vehicles", -1, Vehicles)
+function DeleteAllPersistentVehicles()
+    local vehicles = GetAllVehicles()
+
+    ---@diagnostic disable-next-line: param-type-mismatch
+    for _, vehicle in ipairs(vehicles) do
+        if IsVehiclePersistent(vehicle) then
+            local vehicleId = GetVehicleUID(vehicle)
+
+            Entity(vehicle).state.isPersistent = false
+            DeleteEntity(vehicle)
+
+            GlobalState.spVehicles[vehicleId] = nil
+        end
     end
-end)
+end
+
+function SpawnAllPersistentVehicles()
+    for vehicleId, vehicleData in pairs(Vehicles) do
+        if GlobalState.spVehicles[vehicleId] == nil then
+            local position = vehicleData.matrix.position
+            local vehicle = CreateVehicleServerSetter(vehicleData.model, vehicleData.type, position.x, position.y,
+                position.z, vehicleData.matrix.heading)
+
+            Entity(vehicle).state.isPersistent = true
+            Entity(vehicle).state.pProperties = vehicleData
+            Entity(vehicle).state.nProperties = true
+            Entity(vehicle).state.pId = vehicleId
+
+            GlobalState.spVehicles[vehicleId] = true
+        end
+    end
+end

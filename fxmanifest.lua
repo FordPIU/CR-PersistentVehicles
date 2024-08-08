@@ -3,7 +3,7 @@ game "gta5"
 lua54 "yes"
 
 author "Caleb B."
-version "1.2.0"
+version "1.3.0"
 
 file 'vehicles.json'
 shared_script 'Config.lua'

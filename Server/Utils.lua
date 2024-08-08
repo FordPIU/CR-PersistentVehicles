@@ -5,6 +5,8 @@ function GetVehicleUID(vehicle)
     return plateIndex .. "-" .. plateText
 end
 
+exports("GetVehicleUID", GetVehicleUID)
+
 function TrimVehiclesJson(vehiclesJson)
     local decodedVehicles = json.decode(vehiclesJson)
 
@@ -36,4 +38,8 @@ Citizen.CreateThread(function()
     end
 end)
 
-exports("GetVehicleUID", GetVehicleUID)
+RegisterCommand("dvall", function()
+    for _, v in ipairs(GetGamePool("CVehicle")) do
+        DeleteEntity(v)
+    end
+end, false)

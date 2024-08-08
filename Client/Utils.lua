@@ -1,10 +1,3 @@
---[[
-    I honestly never want to ever touch this file...
-    What a ugly mess.
-]]
-
-local PlayerList = {}
-
 function GetEntityMatrixTable(vehicle)
     local forward, right, up, pos = GetEntityMatrix(vehicle)
 
@@ -262,90 +255,6 @@ function SetVehicleProperties(vehicle, properties, vehicleId)
     end
 end
 
-function GetVehicleUID(vehicle)
-    local plateText = GetVehicleNumberPlateText(vehicle)
-    local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
-
-    return plateIndex .. "-" .. plateText
-end
-
-function GetPlayerClosestToEntity(entity)
-    local closestPlayer = nil
-    local closestDistance = -1
-    local entityCoords = GetEntityCoords(entity)
-
-    for playerId, playerCoords in pairs(PlayerList) do
-        local distance = #(entityCoords - playerCoords)
-
-        if closestDistance == -1 or distance < closestDistance then
-            closestPlayer = playerId
-            closestDistance = distance
-        end
-    end
-
-    return closestPlayer
-end
-
-function GetPlayerClosestToCoord(coord)
-    local closestPlayer = nil
-    local closestDistance = -1
-    local entityCoords = coord
-
-    for playerId, playerCoords in pairs(PlayerList) do
-        local distance = #(entityCoords - playerCoords)
-
-        if closestDistance == -1 or distance < closestDistance then
-            closestPlayer = playerId
-            closestDistance = distance
-        end
-    end
-
-    return closestPlayer
-end
-
-function GetVehicleFromVehicleId(vehicleId)
-    for _, v in ipairs(GetGamePool("CVehicle")) do
-        if GetVehicleUID(v) == vehicleId then return v end
-    end
-end
-
-function DoesPersistentVehicleExists(vehicleId)
-    for _, v in ipairs(GetGamePool("CVehicle")) do
-        if GetVehicleUID(v) == vehicleId then return true end
-    end
-
-    return false
-end
-
-function ForgetVehicle(vehicle)
-    if GetPlayerClosestToEntity(vehicle) ~= GetPlayerServerId(PlayerId()) then return false end
-
-    local vehicleUID = GetVehicleUID(vehicle)
-
-    repeat
-        Wait(10)
-        NetworkRequestControlOfEntity(vehicle)
-    until NetworkHasControlOfEntity(vehicle)
-
-    --Print("Has control")
-
-    SetVehicleSpawningPaused(vehicleUID, true)
-    TriggerServerEvent("CR.PV:Forget", VehToNet(vehicle))
-    --Print("Vehicle marked for forget")
-
-    repeat
-        Wait(0)
-        --Print(type(GetVehicles()[vehicleUID]))
-    until type(GetVehicles()[vehicleUID]) ~= "table"
-
-    --Print("Vehicle data now of type " .. type(GetVehicles()[vehicleUID]) ~= "table")
-    DeleteEntity(vehicle)
-    SetVehicleSpawningPaused(vehicleUID, false)
-    --Print("Vehicle deleted")
-
-    return true
-end
-
 function GetPlateInfoByVehicleId(vehicleId)
     local result = {}
 
@@ -353,20 +262,5 @@ function GetPlateInfoByVehicleId(vehicleId)
         table.insert(result, part)
     end
 
-    --Print(result[1], result[2])
-
     return result[1], result[2]
 end
-
-RegisterNetEvent("CR.PV:Playerlist", function(playerList)
-    PlayerList = playerList
-end)
-
-exports("GetVehicleUID", GetVehicleUID)
-exports("ForgetVehicle", ForgetVehicle)
-
-RegisterCommand("dvall", function()
-    for _, v in ipairs(GetGamePool("CVehicle")) do
-        DeleteEntity(v)
-    end
-end, false)
