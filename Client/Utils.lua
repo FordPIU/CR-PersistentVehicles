@@ -264,3 +264,27 @@ function GetPlateInfoByVehicleId(vehicleId)
 
     return result[1], result[2]
 end
+
+function GetVehicleUID(vehicle)
+    local plateText = GetVehicleNumberPlateText(vehicle)
+    local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
+
+    print("Getting UID for vehicle with plate: " .. plateText .. " and plate index: " .. plateIndex)
+
+    return plateIndex .. "-" .. plateText
+end
+
+exports("GetVehicleUID", GetVehicleUID)
+
+function DrawText3D(x, y, z, text)
+    SetDrawOrigin(x, y, z, 0)
+    SetTextScale(0.35, 0.35)
+    SetTextFont(4)
+    SetTextProportional(1)
+    SetTextColour(255, 255, 255, 215)
+    SetTextEntry("STRING")
+    SetTextCentre(1)
+    AddTextComponentString(text)
+    DrawText(0.0, 0.0)
+    ClearDrawOrigin()
+end

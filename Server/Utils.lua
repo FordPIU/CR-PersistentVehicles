@@ -25,8 +25,14 @@ end
 
 RegisterCommand("dvall", function()
     print("Deleting all vehicles")
-    for _, v in ipairs(GetGamePool("CVehicle")) do
+    for _, v in ipairs(GetAllVehicles()) do
+        GlobalState.spVehicles[GetVehicleUID(v)] = nil
         DeleteEntity(v)
         print("Deleted vehicle with entity ID: " .. v)
     end
+end, false)
+
+RegisterCommand("gssp_reset", function()
+    print("Resetting Spawned Persistent Vehicle Global State")
+    GlobalState.spVehicles = {}
 end, false)

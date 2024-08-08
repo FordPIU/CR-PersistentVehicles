@@ -5,7 +5,7 @@ Citizen.CreateThread(function()
         local propertiesSet = {}
         local propertiesUpdate = {}
 
-        print("Starting vehicle property check and update")
+        print("\nStarting vehicle property check and update")
 
         for _, v in ipairs(GetGamePool("CVehicle")) do
             local vState = Entity(v).state
@@ -14,13 +14,12 @@ Citizen.CreateThread(function()
                 if vState.nProperties then
                     print("Setting properties for vehicle with Net ID: " .. VehToNet(v))
                     SetVehicleProperties(v, vState.pProperties, vState.pId)
+                    FreezeEntityPosition(v, false)
                     propertiesSet[VehToNet(v)] = true
                 else
                     print("Updating properties for vehicle with Net ID: " .. VehToNet(v))
                     propertiesUpdate[VehToNet(v)] = GetVehicleProperties(v)
                 end
-            else
-                warn("Vehicle with entity ID: " .. v .. " is not persistent, skipping property check")
             end
         end
 

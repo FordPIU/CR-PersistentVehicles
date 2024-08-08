@@ -17,7 +17,7 @@ end)
 
 RegisterNetEvent("CR.PV:PropertiesSet", function(vehNets)
     for vehNet, _ in pairs(vehNets) do
-        local vehicle = NetToVeh(vehNet)
+        local vehicle = NetworkGetEntityFromNetworkId(vehNet)
 
         if not DoesEntityExist(vehicle) then
             warn("Attempt to mark properties as set on non-existent vehicle with Net ID: " .. vehNet)
@@ -30,7 +30,7 @@ end)
 
 RegisterNetEvent("CR.PV:PropertiesUpdate", function(vehNets)
     for vehNet, properties in pairs(vehNets) do
-        local vehicle = NetToVeh(vehNet)
+        local vehicle = NetworkGetEntityFromNetworkId(vehNet)
 
         if not DoesEntityExist(vehicle) then
             warn("Attempt to update properties on non-existent vehicle with Net ID: " .. vehNet)
@@ -42,7 +42,7 @@ RegisterNetEvent("CR.PV:PropertiesUpdate", function(vehNets)
 end)
 
 RegisterNetEvent("CR.PV:ForgetVehicle", function(vehNet)
-    local vehicle = NetToVeh(vehNet)
+    local vehicle = NetworkGetEntityFromNetworkId(vehNet)
 
     if not DoesEntityExist(vehicle) then
         warn("Attempt to forget non-existent vehicle with Net ID: " .. vehNet)

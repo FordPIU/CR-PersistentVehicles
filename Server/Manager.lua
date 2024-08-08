@@ -35,7 +35,8 @@ function SpawnVehicle(vehicleId)
         local vehicleData = Vehicles[vehicleId]
         local position = vehicleData.matrix.position
         local vehicle = CreateVehicleServerSetter(vehicleData.model, vehicleData.type, position.x, position.y, position
-        .z, vehicleData.matrix.heading)
+            .z, vehicleData.matrix.heading)
+        FreezeEntityPosition(vehicle, true)
 
         print("Spawning vehicle with Vehicle ID: " .. vehicleId)
 
