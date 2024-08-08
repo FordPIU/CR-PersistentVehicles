@@ -22,7 +22,7 @@ RegisterNetEvent("CR.PV:PropertiesSet", function(vehNets)
         if not DoesEntityExist(vehicle) then
             warn("Attempt to mark properties as set on non-existent vehicle with Net ID: " .. vehNet)
         else
-            print("Setting properties for vehicle with Net ID: " .. vehNet)
+            print("Setting properties for vehicle with Vehicle UID: " .. GetVehicleUID(vehicle))
             Entity(vehicle).state.nProperties = false
         end
     end
@@ -35,7 +35,7 @@ RegisterNetEvent("CR.PV:PropertiesUpdate", function(vehNets)
         if not DoesEntityExist(vehicle) then
             warn("Attempt to update properties on non-existent vehicle with Net ID: " .. vehNet)
         else
-            print("Updating properties for vehicle with Net ID: " .. vehNet)
+            print("Updating properties for vehicle with Vehicle UID: " .. GetVehicleUID(vehicle))
             UpdateVehicle(vehicle, properties)
         end
     end
@@ -47,7 +47,7 @@ RegisterNetEvent("CR.PV:ForgetVehicle", function(vehNet)
     if not DoesEntityExist(vehicle) then
         warn("Attempt to forget non-existent vehicle with Net ID: " .. vehNet)
     else
-        print("Forgetting vehicle with Net ID: " .. vehNet)
+        print("Forgetting vehicle with Vehicle UID: " .. GetVehicleUID(vehicle))
         ForgetVehicle(vehicle)
     end
 end)
@@ -65,10 +65,10 @@ AddEventHandler("entityCreated", function(entity)
 
         if DoesEntityExist(driver) and IsPedAPlayer(driver) then
             if not IsVehiclePersistent(entity) then
-                print("New vehicle created with Entity ID: " .. entity)
+                print("New vehicle created with Vehicle UID: " .. GetVehicleUID(entity))
                 NewVehicle(entity)
             else
-                print("Deleting non-persistent vehicle with Entity ID: " .. entity)
+                print("Deleting persistent vehicle with Vehicle UID: " .. GetVehicleUID(entity))
                 DeleteEntity(entity)
             end
         end
