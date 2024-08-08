@@ -10,7 +10,7 @@ Citizen.CreateThread(function()
         for _, v in ipairs(GetGamePool("CVehicle")) do
             local vState = Entity(v).state
 
-            if vState.isPersistent then
+            if vState.isPersistent and NetworkGetEntityOwner(v) == PlayerId() then
                 if vState.nProperties then
                     --print("Setting properties for vehicle with Vehicle UID: " .. vState.pId)
                     SetVehicleProperties(v, vState.pProperties, vState.pId)
