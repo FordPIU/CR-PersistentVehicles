@@ -1,5 +1,5 @@
 local function duplicateCheck(vehicle, vehicleId)
-    for _, v in ipairs(GetGamePool("CVehicles")) do
+    for _, v in ipairs(GetGamePool("CVehicle")) do
         local vId = GetVehicleUID(v)
 
         if vId == vehicleId and v ~= vehicle then
@@ -22,14 +22,14 @@ Citizen.CreateThread(function()
 
             if vState.isPersistent then
                 if vState.nProperties then
+                    print("Checking for duplicates of vehicle with Vehicle UID: " .. vState.pId)
+                    duplicateCheck(v, vState.pId)
+
                     print("Setting properties for vehicle with Vehicle UID: " .. vState.pId)
                     SetVehicleProperties(v, vState.pProperties, vState.pId)
                     FreezeEntityPosition(v, false)
                     propertiesSet[VehToNet(v)] = true
                 else
-                    print("Checking for duplicates of vehicle with Vehicle UID: " .. vState.pId)
-                    duplicateCheck(v, vState.pId)
-
                     print("Updating properties for vehicle with Vehicle UID: " .. vState.pId)
                     propertiesUpdate[VehToNet(v)] = GetVehicleProperties(v)
                 end
