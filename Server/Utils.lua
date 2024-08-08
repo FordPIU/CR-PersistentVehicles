@@ -8,12 +8,12 @@ end
 exports("GetVehicleUID", GetVehicleUID)
 
 function TrimVehiclesJson(vehiclesJson)
-    print("Trimming vehicle JSON data")
+    --print("Trimming vehicle JSON data")
     local decodedVehicles = json.decode(vehiclesJson)
 
     for vehicleUID, vehicleProperties in pairs(decodedVehicles) do
         if vehicleProperties == true then
-            print("Removing vehicle with UID: " .. vehicleUID .. " from the list")
+            --print("Removing vehicle with UID: " .. vehicleUID .. " from the list")
             decodedVehicles[vehicleUID] = nil
         end
     end
@@ -22,19 +22,19 @@ function TrimVehiclesJson(vehiclesJson)
 end
 
 RegisterCommand("dvall", function()
-    print("Deleting all vehicles")
+    --print("Deleting all vehicles")
     for _, v in ipairs(GetAllVehicles()) do
         DeleteEntity(v)
-        print("Deleted vehicle with entity ID: " .. v)
+        --print("Deleted vehicle with entity ID: " .. v)
     end
 end, false)
 
 RegisterCommand("dvallnr", function()
-    print("Deleting all vehicles without respawning")
+    --print("Deleting all vehicles without respawning")
     for _, v in ipairs(GetAllVehicles()) do
         DO_NOT_RESPAWN[v] = true
         DeleteEntity(v)
-        print("Deleted vehicle with entity ID: " .. v)
+        --print("Deleted vehicle with entity ID: " .. v)
     end
 end, false)
 

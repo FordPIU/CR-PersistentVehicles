@@ -7,25 +7,25 @@ function LoadVehicleData(resourceName)
     local vehiclesJson = LoadResourceFile(resourceName or GetCurrentResourceName(), "vehicles.json")
 
     if vehiclesJson ~= nil then
-        print("Loading vehicle data from vehicles.json")
+        --print("Loading vehicle data from vehicles.json")
         Vehicles = TrimVehiclesJson(vehiclesJson)
     else
         warn("No file: vehicles.json found while loading vehicle data")
     end
 
-    print("Deleting all spawned vehicles")
+    --print("Deleting all spawned vehicles")
     for _, v in ipairs(GetAllVehicles()) do
         DO_NOT_RESPAWN[v] = true
         DeleteEntity(v)
-        print("Deleted vehicle with entity ID: " .. v)
+        --print("Deleted vehicle with entity ID: " .. v)
     end
 
-    print("Spawning all persistent vehicles")
+    --print("Spawning all persistent vehicles")
     SpawnAllPersistentVehicles()
 end
 
 function SaveVehicleData(resourceName)
-    print("Saving vehicle data to vehicles.json")
+    --print("Saving vehicle data to vehicles.json")
     SaveResourceFile(resourceName or GetCurrentResourceName(), "vehicles.json", json.encode(Vehicles), -1)
 end
 
@@ -39,7 +39,7 @@ function SpawnVehicle(vehicleId)
         .z, vehicleData.matrix.heading)
     FreezeEntityPosition(vehicle, true)
 
-    print("Spawning vehicle with Vehicle ID: " .. vehicleId)
+    --print("Spawning vehicle with Vehicle ID: " .. vehicleId)
 
     Entity(vehicle).state.isPersistent = true
     Entity(vehicle).state.pProperties = vehicleData
@@ -50,7 +50,7 @@ end
 function NewVehicle(vehicle)
     local vehicleId = GetVehicleUID(vehicle)
 
-    print("Registering new vehicle with Vehicle ID: " .. vehicleId)
+    --print("Registering new vehicle with Vehicle ID: " .. vehicleId)
 
     Vehicles[vehicleId] = true
 
@@ -62,7 +62,7 @@ end
 function UpdateVehicle(vehicle, properties)
     local vehicleId = GetVehicleUID(vehicle)
 
-    print("Updating vehicle with Vehicle ID: " .. vehicleId)
+    --print("Updating vehicle with Vehicle ID: " .. vehicleId)
 
     Vehicles[vehicleId] = properties
 
@@ -73,7 +73,7 @@ end
 function ForgetVehicle(vehicle)
     local vehicleId = GetVehicleUID(vehicle)
 
-    print("Forgetting vehicle with Vehicle ID: " .. vehicleId)
+    --print("Forgetting vehicle with Vehicle ID: " .. vehicleId)
 
     Vehicles[vehicleId] = nil
     DO_NOT_RESPAWN[vehicle] = true
@@ -87,16 +87,16 @@ function IsVehiclePersistent(vehicle)
     local isPersistent = Vehicles[vehicleId] ~= nil
 
     if isPersistent then
-        print("Vehicle with Vehicle ID: " .. vehicleId .. " is persistent")
+        --print("Vehicle with Vehicle ID: " .. vehicleId .. " is persistent")
     else
-        print("Vehicle with Vehicle ID: " .. vehicleId .. " is not persistent")
+        --print("Vehicle with Vehicle ID: " .. vehicleId .. " is not persistent")
     end
 
     return isPersistent
 end
 
 function SpawnAllPersistentVehicles()
-    print("Spawning all persistent vehicles")
+    --print("Spawning all persistent vehicles")
 
     for vehicleId, _ in pairs(Vehicles) do
         SpawnVehicle(vehicleId)
