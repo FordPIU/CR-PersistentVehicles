@@ -30,11 +30,21 @@ RegisterNetEvent("CR.PV:PropertiesUpdate", function(vehNets)
         local vehicle = NetToVeh(vehNet)
 
         if not DoesEntityExist(vehicle) then
-            warn("Attempt to mark properties as set on non-exsistent vehicle")
+            warn("Attempt to update properties on non-exsistent vehicle")
         end
 
         UpdateVehicle(vehicle, properties)
     end
+end)
+
+RegisterNetEvent("CR.PV:ForgetVehicle", function(vehNet)
+    local vehicle = NetToVeh(vehNet)
+
+    if not DoesEntityExist(vehicle) then
+        warn("Attempt to forget non-exsistent vehicle")
+    end
+
+    ForgetVehicle(vehicle)
 end)
 
 --[[
