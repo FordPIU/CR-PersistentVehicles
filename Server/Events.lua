@@ -83,11 +83,9 @@ AddEventHandler("entityRemoved", function(entity)
             return
         end
 
-        local vehicleId = GetVehicleUID(entity)
-
         if Entity(entity).state.isPersistent then
             --print("Respawning persistent vehicle with Vehicle UID: " .. vehicleId)
-            SpawnVehicle(vehicleId)
+            SpawnVehicle(Entity(entity).state.pId)
         else
             --print("Non-persistent vehicle removed with Entity ID: " .. entity)
         end
