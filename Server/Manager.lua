@@ -62,6 +62,8 @@ end
 function UpdateVehicle(vehicle, properties)
     local vehicleId = GetVehicleUID(vehicle)
 
+    if not Vehicles[vehicleId] then return end
+
     --print("Updating vehicle with Vehicle ID: " .. vehicleId)
 
     Vehicles[vehicleId] = properties
