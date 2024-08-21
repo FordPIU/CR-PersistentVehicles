@@ -70,15 +70,18 @@ function UpdateVehicle(vehicle, properties)
     SaveVehicleData()
 end
 
-function ForgetVehicle(vehicle)
-    local vehicleId = GetVehicleUID(vehicle)
+function ForgetVehicle(vehicle, vehicleId)
+    if vehicleId == nil then vehicleId = GetVehicleUID(vehicle) end
 
     --print("Forgetting vehicle with Vehicle ID: " .. vehicleId)
 
     Vehicles[vehicleId] = nil
-    DO_NOT_RESPAWN[vehicle] = true
 
-    DeleteEntity(vehicle)
+    if vehicle ~= nil then
+        DO_NOT_RESPAWN[vehicle] = true
+        DeleteEntity(vehicle)
+    end
+
     SaveVehicleData()
 end
 

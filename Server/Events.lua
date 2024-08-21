@@ -41,6 +41,17 @@ RegisterNetEvent("CR.PV:PropertiesUpdate", function(vehNets)
     end
 end)
 
+RegisterNetEvent("CR.PV:NewVehicle", function(vehNet)
+    local vehicle = NetworkGetEntityFromNetworkId(vehNet)
+
+    if not DoesEntityExist(vehicle) then
+        warn("Attempt to add new non-existent vehicle with Net ID: " .. vehNet)
+    else
+        --print("Adding new vehicle with Vehicle UID: " .. GetVehicleUID(vehicle))
+        NewVehicle(vehicle)
+    end
+end)
+
 RegisterNetEvent("CR.PV:ForgetVehicle", function(vehNet)
     local vehicle = NetworkGetEntityFromNetworkId(vehNet)
 
@@ -50,6 +61,11 @@ RegisterNetEvent("CR.PV:ForgetVehicle", function(vehNet)
         --print("Forgetting vehicle with Vehicle UID: " .. GetVehicleUID(vehicle))
         ForgetVehicle(vehicle)
     end
+end)
+
+RegisterNetEvent("CR.PV:ForgetVehicleById", function(vehicleUID)
+    --print("Forgetting vehicle BY Vehicle UID: " .. vehicleUID)
+    ForgetVehicle(nil, vehicleUID)
 end)
 
 --[[
