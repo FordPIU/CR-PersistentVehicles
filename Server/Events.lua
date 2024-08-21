@@ -3,66 +3,69 @@
 ]]
 AddEventHandler("onResourceStart", function(resourceName)
     if resourceName == GetCurrentResourceName() then
+        --print("Starting resource: " .. resourceName)
         LoadVehicleData(resourceName)
     end
 end)
 
 AddEventHandler("onResourceStop", function(resourceName)
     if resourceName == GetCurrentResourceName() then
+        --print("Stopping resource: " .. resourceName)
         SaveVehicleData(resourceName)
     end
 end)
 
---[[
-    Player related
-]]
-RegisterNetEvent("CR.PV:NewPlayer", function()
-    TriggerClientEvent("CR.PV:Vehicles", source, GetVehicles())
-end)
-RegisterNetEvent("CR.PV:Transfer", function(serverId, vehicleId)
-    TriggerClientEvent("CR.PV:TransferRequest", serverId, vehicleId)
-end)
-
---[[
-    Exposed Events
-]]
-RegisterNetEvent("CR.PV:Update", function(vehicleNetId, properties)
-    local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
-
-    if not DoesEntityExist(vehicle) then
-        Warn("Event call to forget vehicle, but net id was invalid and the vehicle doesnt exist.")
-        return
-    end
-
-    UpdateVehicle(vehicle, properties)
-
-    --Print("Updated vehicle " .. GetVehicleUID(vehicle))
-end)
-
-RegisterNetEvent("CR.PV:NetworkedUpdate", function(networkedData)
-    for vehicleNetId, properties in pairs(networkedData) do
-        local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
+RegisterNetEvent("CR.PV:PropertiesSet", function(vehNets)
+    for vehNet, _ in pairs(vehNets) do
+        local vehicle = NetworkGetEntityFromNetworkId(vehNet)
 
         if not DoesEntityExist(vehicle) then
-            Warn("Event call to forget vehicle, but net id was invalid and the vehicle doesnt exist.")
-            return
+            warn("Attempt to mark properties as set on non-existent vehicle with Net ID: " .. vehNet)
+        else
+            --print("Setting properties for vehicle with Vehicle UID: " .. GetVehicleUID(vehicle))
+            Entity(vehicle).state.nProperties = false
         end
-
-        UpdateVehicle(vehicle, properties)
     end
 end)
 
-RegisterNetEvent("CR.PV:Forget", function(vehicleNetId)
-    local vehicle = NetworkGetEntityFromNetworkId(vehicleNetId)
+RegisterNetEvent("CR.PV:PropertiesUpdate", function(vehNets)
+    for vehNet, properties in pairs(vehNets) do
+        local vehicle = NetworkGetEntityFromNetworkId(vehNet)
+
+        if not DoesEntityExist(vehicle) then
+            warn("Attempt to update properties on non-existent vehicle with Net ID: " .. vehNet)
+        else
+            --print("Updating properties for vehicle with Vehicle UID: " .. GetVehicleUID(vehicle))
+            UpdateVehicle(vehicle, properties)
+        end
+    end
+end)
+
+RegisterNetEvent("CR.PV:NewVehicle", function(vehNet)
+    local vehicle = NetworkGetEntityFromNetworkId(vehNet)
 
     if not DoesEntityExist(vehicle) then
-        Warn("Event call to forget vehicle, but net id was invalid and the vehicle doesnt exist.")
-        return
+        warn("Attempt to add new non-existent vehicle with Net ID: " .. vehNet)
+    else
+        --print("Adding new vehicle with Vehicle UID: " .. GetVehicleUID(vehicle))
+        NewVehicle(vehicle)
     end
+end)
 
-    ForgetVehicle(vehicle)
+RegisterNetEvent("CR.PV:ForgetVehicle", function(vehNet)
+    local vehicle = NetworkGetEntityFromNetworkId(vehNet)
 
-    --Print("Forgot vehicle " .. GetVehicleUID(vehicle))
+    if not DoesEntityExist(vehicle) then
+        warn("Attempt to forget non-existent vehicle with Net ID: " .. vehNet)
+    else
+        --print("Forgetting vehicle with Vehicle UID: " .. GetVehicleUID(vehicle))
+        ForgetVehicle(vehicle)
+    end
+end)
+
+RegisterNetEvent("CR.PV:ForgetVehicleById", function(vehicleUID)
+    --print("Forgetting vehicle BY Vehicle UID: " .. vehicleUID)
+    ForgetVehicle(nil, vehicleUID)
 end)
 
 --[[
@@ -78,10 +81,29 @@ AddEventHandler("entityCreated", function(entity)
 
         if DoesEntityExist(driver) and IsPedAPlayer(driver) then
             if not IsVehiclePersistent(entity) then
-                UpdateVehicle(entity, true)
+                --print("New vehicle created with Vehicle UID: " .. GetVehicleUID(entity))
+                NewVehicle(entity)
             else
+                --print("Deleting persistent vehicle with Vehicle UID: " .. GetVehicleUID(entity))
                 DeleteEntity(entity)
             end
+        end
+    end
+end)
+
+DO_NOT_RESPAWN = {}
+AddEventHandler("entityRemoved", function(entity)
+    if GetEntityType(entity) == 2 then
+        if DO_NOT_RESPAWN[entity] then
+            DO_NOT_RESPAWN[entity] = nil
+            return
+        end
+
+        if Entity(entity).state.isPersistent then
+            --print("Respawning persistent vehicle with Vehicle UID: " .. vehicleId)
+            SpawnVehicle(Entity(entity).state.pId)
+        else
+            --print("Non-persistent vehicle removed with Entity ID: " .. entity)
         end
     end
 end)
