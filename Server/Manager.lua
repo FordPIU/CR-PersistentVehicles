@@ -32,8 +32,8 @@ end
 --[[
     Vehicle State Management
 ]]
-function SpawnVehicle(vehicleId)
-    local vehicleData = Vehicles[vehicleId]
+function SpawnVehicle(vehicleId, vehicleData)
+    vehicleData = vehicleData or Vehicles[vehicleId]
     local position = vehicleData.matrix.position
     local vehicle = CreateVehicleServerSetter(vehicleData.model, vehicleData.type, position.x, position.y, position
         .z, vehicleData.matrix.heading)
@@ -103,7 +103,7 @@ end
 function SpawnAllPersistentVehicles()
     --print("Spawning all persistent vehicles")
 
-    for vehicleId, _ in pairs(Vehicles) do
-        SpawnVehicle(vehicleId)
+    for vehicleId, vehicleData in pairs(Vehicles) do
+        SpawnVehicle(vehicleId, vehicleData)
     end
 end

@@ -76,6 +76,8 @@ AddEventHandler("entityCreated", function(entity)
         Wait(0)
     until DoesEntityExist(entity)
 
+    Wait(100)
+
     if GetEntityType(entity) == 2 then
         local driver = GetPedInVehicleSeat(entity, -1)
 

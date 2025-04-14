@@ -132,7 +132,7 @@ function SetVehicleProperties(vehicle, properties, vehicleId)
     local pearlescentColor, wheelColor = GetVehicleExtraColours(vehicle)
     local plateIndex, plateText = GetPlateInfoByVehicleId(vehicleId)
 
-    if plateIndex == nil then plateIndex = 0 end
+    if plateIndex == nil then plateIndex = 0 else plateIndex = tonumber(plateIndex) end
     if plateText == nil then plateText = "" end
 
     SetVehicleModKit(vehicle, 0)
