@@ -259,21 +259,51 @@ function SetVehicleProperties(vehicle, properties, vehicleId)
     end
 end
 
-function GetPlateInfoByVehicleId(vehicleId)
-    local result = {}
+--[[
+    Parses a vehicle UID string (expected format: model-plateIndex-plateText)
+    to extract the plate index and plate text components.
 
-    for part in string.gmatch(vehicleId, "([^%-]+)") do
-        table.insert(result, part)
+    @param vehicleUID string: The unique identifier string for the vehicle.
+                           Example: "adder-0-MYPLATE"
+    @return string|nil: The plate index (as a string).
+    @return string|nil: The plate text.
+                       Returns nil, nil if the input string is invalid or
+                       does not match the expected 3-part format.
+]]
+function GetPlateInfoByVehicleId(vehicleUID)
+    -- 1. Input Validation: Ensure we have a non-empty string.
+    if type(vehicleUID) ~= "string" or vehicleUID == "" then
+        -- warn(string.format("GetPlateInfoByVehicleUID: Invalid input type or empty string: %s", type(vehicleUID)))
+        return nil, nil
     end
 
-    return result[1], result[2]
+    local parts = {}
+    -- 2. Split the string: Use string.gmatch to split by the hyphen delimiter.
+    --    The pattern "([^%-]+)" captures sequences of one or more characters that are NOT hyphens.
+    for part in string.gmatch(vehicleUID, "([^%-]+)") do
+        table.insert(parts, part)
+    end
+
+    -- 3. Validate the result: Check if we got exactly 3 parts.
+    if #parts == 3 then
+        -- The new format is model-plateIndex-plateText
+        -- So, plateIndex is the 2nd part, and plateText is the 3rd part.
+        local plateIndex = parts[2]
+        local plateText = parts[3]
+        return plateIndex, plateText
+    else
+        -- warn(string.format("GetPlateInfoByVehicleUID: Unexpected format for UID '%s'. Expected 3 parts, found %d.", vehicleUID, #parts))
+        -- Return nil, nil if the format is incorrect.
+        return nil, nil
+    end
 end
 
 function GetVehicleUID(vehicle)
+    local vehicleModel = GetEntityModel(vehicle)
     local plateText = GetVehicleNumberPlateText(vehicle)
     local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
 
-    return plateIndex .. "-" .. plateText
+    return vehicleModel .. "-" .. plateIndex .. "-" .. plateText
 end
 
 exports("GetVehicleUID", GetVehicleUID)

@@ -1,8 +1,9 @@
 function GetVehicleUID(vehicle)
+    local vehicleModel = GetEntityModel(vehicle)
     local plateText = GetVehicleNumberPlateText(vehicle)
     local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
 
-    return plateIndex .. "-" .. plateText
+    return vehicleModel .. "-" .. plateIndex .. "-" .. plateText
 end
 
 exports("GetVehicleUID", GetVehicleUID)
