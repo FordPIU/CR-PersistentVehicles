@@ -447,17 +447,22 @@ end
 ]]
 function SpawnVehicle(vehicleId)
     local vehicleData = Vehicles[vehicleId]
-    local position = vehicleData.matrix.position
-    local vehicle = CreateVehicleServerSetter(vehicleData.model, vehicleData.type, position.x, position.y, position
-        .z, vehicleData.matrix.heading)
-    FreezeEntityPosition(vehicle, true)
+	
+	if type(vehicleData) == "table" then
+		local position = vehicleData.matrix.position
+		local vehicle = CreateVehicleServerSetter(vehicleData.model, vehicleData.type, position.x, position.y, position
+			.z, vehicleData.matrix.heading)
+		FreezeEntityPosition(vehicle, true)
 
-    --print("Spawning vehicle with Vehicle ID: " .. vehicleId)
+		--print("Spawning vehicle with Vehicle ID: " .. vehicleId)
 
-    Entity(vehicle).state.isPersistent = true
-    Entity(vehicle).state.pProperties = vehicleData
-    Entity(vehicle).state.nProperties = true
-    Entity(vehicle).state.pId = vehicleId
+		Entity(vehicle).state.isPersistent = true
+		Entity(vehicle).state.pProperties = vehicleData
+		Entity(vehicle).state.nProperties = true
+		Entity(vehicle).state.pId = vehicleId
+	else
+		ForgetVehicle(vehicle, vehicleId)
+	end
 end
 
 function NewVehicle(vehicle)
