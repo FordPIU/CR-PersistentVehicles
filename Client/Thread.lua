@@ -2,7 +2,7 @@ Citizen.CreateThread(function()
     local plateTracking = {}
 
     while true do
-        Wait(1000)
+        Wait(2500)
 
         local propertiesSet = {}
         local propertiesUpdate = {}

@@ -29,16 +29,26 @@ RegisterNetEvent("CR.PV:PropertiesSet", function(vehNets)
 end)
 
 RegisterNetEvent("CR.PV:PropertiesUpdate", function(vehNets)
+	local i = 0
+	
     for vehNet, properties in pairs(vehNets) do
-        local vehicle = NetworkGetEntityFromNetworkId(vehNet)
+		if i % 5 == 0 then
+			Wait(1)
+		end
+		
+		local vehicle = NetworkGetEntityFromNetworkId(vehNet)
 
-        if not DoesEntityExist(vehicle) then
-            warn("Attempt to update properties on non-existent vehicle with Net ID: " .. vehNet)
-        else
-            --print("Updating properties for vehicle with Vehicle UID: " .. GetVehicleUID(vehicle))
-            UpdateVehicle(vehicle, properties)
-        end
+		if not DoesEntityExist(vehicle) then
+			warn("Attempt to update properties on non-existent vehicle with Net ID: " .. vehNet)
+		else
+			--print("Updating properties for vehicle with Vehicle UID: " .. GetVehicleUID(vehicle))
+			UpdateVehicle(vehicle, properties)
+		end
+		
+		i = i + 1
     end
+	
+	print("Updated all persistent vehicles")
 end)
 
 RegisterNetEvent("CR.PV:NewVehicle", function(vehNet)
