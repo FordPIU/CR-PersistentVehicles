@@ -1,142 +1,135 @@
+--- Parses a vehicle UID string (expected format: model-plateIndex-plateText)
+--- to extract the plate index and plate text components.
+--- @param vehicleUID string The unique identifier string for the vehicle. Example: "adder-0-MYPLATE"
+--- @return string|nil The plate index (as a string).
+--- @return string|nil The plate text. Returns nil, nil if the input string is invalid or format is wrong.
+function GetPlateInfoByVehicleId(vehicleUID)
+    if type(vehicleUID) ~= "string" or vehicleUID == "" then
+        return nil, nil
+    end
+
+    local parts = {}
+    for part in string.gmatch(vehicleUID, "([^%-]+)") do
+        table.insert(parts, part)
+    end
+
+    -- Expecting 3 parts: model-plateIndex-plateText
+    if #parts == 3 then
+        return parts[2], parts[3] -- plateIndex, plateText
+    else
+        -- warn(string.format("GetPlateInfoByVehicleUID: Unexpected format for UID '%s'. Expected 3 parts, found %d.", vehicleUID, #parts))
+        return nil, nil
+    end
+end
+
+--- Generates a unique identifier string for a vehicle based on its model, plate index, and plate text.
+--- @param vehicle number The entity handle of the vehicle.
+--- @return string The unique identifier string (e.g., "adder-0-MYPLATE"). Returns nil if vehicle is invalid.
+function GetVehicleUID(vehicle)
+    if not DoesEntityExist(vehicle) or GetEntityType(vehicle) ~= 2 then
+        return nil
+    end
+    local vehicleModel = GetEntityModel(vehicle)
+    local plateText = GetVehicleNumberPlateText(vehicle)
+    local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
+
+    -- Ensure model hash is used for uniqueness if needed, but GetEntityModel usually returns name hash
+    return string.format("%s-%d-%s", vehicleModel, plateIndex, plateText)
+end
+
+-- Export for potential external use client-side
+exports("GetVehicleUID", GetVehicleUID)
+
+
+--- Gets the matrix data (position, rotation vectors, heading) for a vehicle entity.
+--- @param vehicle number The entity handle of the vehicle.
+--- @return table A table containing matrix vectors, position, and heading.
 function GetEntityMatrixTable(vehicle)
     local forward, right, up, pos = GetEntityMatrix(vehicle)
-
     return {
-        vectors = {
-            forward = forward,
-            right = right,
-            up = up,
-        },
+        vectors = { forward = forward, right = right, up = up },
         position = pos,
         heading = GetEntityHeading(vehicle)
     }
 end
 
---- Fetches various properties of a vehicle.
+--- Helper function to get vehicle color properties.
 --- @param vehicle number The entity handle of the vehicle.
---- @return table A table containing the vehicle's properties.
-function GetVehicleProperties(vehicle)
-    -- Pre-fetch values used multiple times or needed for checks
+--- @return table A table containing color-related properties.
+local function GetVehicleColorProperties(vehicle)
+    local props = {}
     local colorPrimary, colorSecondary = GetVehicleColours(vehicle)
     local pearlescentColor, wheelColor = GetVehicleExtraColours(vehicle)
-    local _, lightsOn, _ = GetVehicleLightsState(vehicle)
 
-
-    -- Initialize the properties table
-    local props = {
-        model = GetEntityModel(vehicle),
-        type = GetVehicleType(vehicle),
-        matrix = GetEntityMatrixTable(vehicle), -- Gets position and heading
-        engineOn = GetIsVehicleEngineRunning(vehicle),
-        lightsOn = lightsOn == 1,
-        sirenOn = IsVehicleSirenOn(vehicle),           -- Keep even if false
-        sirenAudioOn = IsVehicleSirenAudioOn(vehicle), -- Keep even if false
-        bodyHealth = GetVehicleBodyHealth(vehicle),
-        engineHealth = GetVehicleEngineHealth(vehicle),
-        fuelLevel = GetVehicleFuelLevel(vehicle),
-        dirtLevel = GetVehicleDirtLevel(vehicle),
-        color1 = colorPrimary,
-        color2 = colorSecondary,
-        interiorColor = GetVehicleInteriorColour(vehicle), -- Fetch directly
-        pearlescentColor = pearlescentColor,
-        wheelColor = wheelColor,
-        wheels = GetVehicleWheelType(vehicle),
-        windowTint = GetVehicleWindowTint(vehicle),        -- Returns -1 if none, handle in setter or keep -1
-        xenonColor = GetVehicleXenonLightsColour(vehicle), -- Returns 255 if none, handle in setter or keep 255
-        modLivery = GetVehicleLivery(vehicle)              -- Returns -1 if none
-    }
+    props.color1 = colorPrimary
+    props.color2 = colorSecondary
+    props.pearlescentColor = pearlescentColor
+    props.wheelColor = wheelColor
+    props.interiorColor = GetVehicleInteriorColour(vehicle)
 
     -- RGB Colors (only add if custom)
     local r1, g1, b1 = GetVehicleCustomPrimaryColour(vehicle)
-    if r1 ~= 0 or g1 ~= 0 or b1 ~= 0 then -- Check if different from default black
-        props.rgbcolor1 = { r1, g1, b1 }
-    end
+    if r1 ~= 0 or g1 ~= 0 or b1 ~= 0 then props.rgbcolor1 = { r1, g1, b1 } end
     local r2, g2, b2 = GetVehicleCustomSecondaryColour(vehicle)
-    if r2 ~= 0 or g2 ~= 0 or b2 ~= 0 then -- Check if different from default black
-        props.rgbcolor2 = { r2, g2, b2 }
-    end
+    if r2 ~= 0 or g2 ~= 0 or b2 ~= 0 then props.rgbcolor2 = { r2, g2, b2 } end
 
-    -- Neon Enabled (Use a loop)
+    -- Neon (only add if enabled)
     local neonEnabled = {}
     local anyNeonEnabled = false
     for i = 0, 3 do
         neonEnabled[i + 1] = IsVehicleNeonLightEnabled(vehicle, i)
         if neonEnabled[i + 1] then anyNeonEnabled = true end
     end
-    if anyNeonEnabled then -- Only store if at least one is enabled
+    if anyNeonEnabled then
         props.neonEnabled = neonEnabled
-        -- Only get neon color if neon is enabled
         props.neonColor = table.pack(GetVehicleNeonLightsColour(vehicle))
-    end
-
-    -- Tire Burst Status (Use a loop)
-    local tireBurst = {}
-    local anyTireBurst = false
-    for i = 0, 8 do -- Check common tire indices
-        if IsVehicleTyreBurst(vehicle, i, false) then
-            -- Store index + 1 as key for Lua table (1-based)
-            -- Store true to indicate burst state
-            tireBurst[i + 1] = true
-            anyTireBurst = true
-        end
-    end
-    if anyTireBurst then
-        props.tireBurst = tireBurst -- Only store the table if any tire is burst
-    end
-
-    -- Window Status (Use a loop, store broken windows)
-    local windowStatus = {}
-    local anyWindowBroken = false
-    for i = 0, 7 do -- Check common window indices
-        if not IsVehicleWindowIntact(vehicle, i) then
-            -- Store index + 1 as key for Lua table (1-based)
-            -- Store true to indicate broken state (since we check !IsVehicleWindowIntact)
-            windowStatus[i + 1] = true
-            anyWindowBroken = true
-        end
-    end
-    if anyWindowBroken then
-        props.windowStatus = windowStatus -- Store only if any window is broken
-    end
-
-    -- Extras (Use a loop)
-    local extras = {}
-    local hasExtras = false
-    for id = 0, 12 do
-        if DoesExtraExist(vehicle, id) then
-            -- Store extra state directly (true if on, false if off)
-            extras[tostring(id)] = IsVehicleExtraTurnedOn(vehicle, id) == 1
-            hasExtras = true
-        end
-    end
-    if hasExtras then
-        props.extras = extras
     end
 
     -- Tyre Smoke Color (only add if custom)
     local sr, sg, sb = GetVehicleTyreSmokeColor(vehicle)
-    if sr ~= 255 or sg ~= 255 or sb ~= 255 then -- Check if different from default white
-        props.tyreSmokeColor = { sr, sg, sb }
-    end
+    if sr ~= 255 or sg ~= 255 or sb ~= 255 then props.tyreSmokeColor = { sr, sg, sb } end
 
-    -- Mods (Use loops and check for -1)
-    local function addMod(modType, modValue)
-        if modValue ~= -1 and modValue ~= 255 then -- 255 often indicates 'stock' for toggles like Xenon
-            props['mod' .. modType] = modValue
+    props.windowTint = GetVehicleWindowTint(vehicle)        -- -1 if none
+    props.xenonColor = GetVehicleXenonLightsColour(vehicle) -- 255 if none (often part of modXenon)
+
+    return props
+end
+
+--- Helper function to get vehicle modification properties.
+--- @param vehicle number The entity handle of the vehicle.
+--- @return table A table containing modification-related properties.
+local function GetVehicleModProperties(vehicle)
+    local props = {}
+    props.wheels = GetVehicleWheelType(vehicle)
+    props.modLivery = GetVehicleLivery(vehicle) -- -1 if none
+
+    -- Extras
+    local extras = {}
+    local hasExtras = false
+    for id = 0, 12 do
+        if DoesExtraExist(vehicle, id) then
+            extras[tostring(id)] = IsVehicleExtraTurnedOn(vehicle, id) == 1
+            hasExtras = true
         end
+    end
+    if hasExtras then props.extras = extras end
+
+    -- Mods (Standard and Toggle)
+    local function addMod(modType, modValue)
+        if modValue ~= -1 and modValue ~= 255 then props['mod' .. modType] = modValue end
     end
 
     -- Standard Mods (0-16, 23-48 excluding toggles)
     for i = 0, 16 do addMod(i, GetVehicleMod(vehicle, i)) end
-    for i = 23, 46 do addMod(i, GetVehicleMod(vehicle, i)) end -- Corrected upper limit
-    addMod(48, GetVehicleMod(vehicle, 48))                     -- Livery mod slot
+    for i = 23, 46 do addMod(i, GetVehicleMod(vehicle, i)) end
+    addMod(48, GetVehicleMod(vehicle, 48)) -- Livery mod slot
 
-    -- Toggle Mods (18, 20, 22) - Store only if 'true'
+    -- Toggle Mods (Store only if true)
     if IsToggleModOn(vehicle, 18) then props.modTurbo = true end
     if IsToggleModOn(vehicle, 20) then props.modSmokeEnabled = true end
-    if IsToggleModOn(vehicle, 22) then props.modXenon = true end -- Note: GetVehicleMod(veh, 22) also works
+    if IsToggleModOn(vehicle, 22) then props.modXenon = true end
 
-    -- Rename mods for clarity (matches your original names) - This is cosmetic mapping
+    -- Cosmetic Renaming (Mapping from index to name)
     local modNameMapping = {
         [0] = "Spoilers",
         [1] = "FrontBumper",
@@ -179,11 +172,8 @@ function GetVehicleProperties(vehicle)
         [44] = "TrimB",
         [45] = "Tank",
         [46] = "Windows",
-        [48] =
-        "Livery" -- Note: Livery is often GetVehicleLivery, but mod slot 48 exists
+        [48] = "Livery"
     }
-
-    -- Apply the cosmetic names
     for modIndex, modName in pairs(modNameMapping) do
         local propKey = 'mod' .. modIndex
         if props[propKey] ~= nil then
@@ -191,67 +181,85 @@ function GetVehicleProperties(vehicle)
             props[propKey] = nil -- Remove the indexed version
         end
     end
-    -- Handle livery specifically if GetVehicleLivery was used
+    -- Handle livery specifically if GetVehicleLivery was used and resulted in -1
     if props.modLivery == -1 then props.modLivery = nil end
-
-
-    -- No need for the final loop to remove false/-1, as we avoided adding them.
 
     return props
 end
 
---- Applies a table of properties to a vehicle.
+--- Helper function to get vehicle state and damage properties.
 --- @param vehicle number The entity handle of the vehicle.
---- @param properties table The properties table (structure matching GetVehicleProperties output).
---- @param vehicleId string|nil The persistent ID of the vehicle (used for plate info).
-function SetVehicleProperties(vehicle, properties, vehicleId)
-    -- Only set mod kit if mods are actually present in the properties
-    local hasMods = false
-    for key, _ in pairs(properties) do
-        if string.sub(key, 1, 3) == "mod" then
-            hasMods = true
-            break
+--- @return table A table containing state and damage-related properties.
+local function GetVehicleStateProperties(vehicle)
+    local props = {}
+    local _, lightsOn, _ = GetVehicleLightsState(vehicle)
+
+    props.engineOn = GetIsVehicleEngineRunning(vehicle)
+    props.lightsOn = lightsOn == 1
+    props.sirenOn = IsVehicleSirenOn(vehicle)
+    props.sirenAudioOn = IsVehicleSirenAudioOn(vehicle)
+    props.bodyHealth = GetVehicleBodyHealth(vehicle)
+    props.engineHealth = GetVehicleEngineHealth(vehicle)
+    props.fuelLevel = GetVehicleFuelLevel(vehicle)
+    props.dirtLevel = GetVehicleDirtLevel(vehicle)
+
+    -- Tire Burst Status
+    local tireBurst = {}
+    local anyTireBurst = false
+    for i = 0, 8 do                 -- Check common tire indices + spares
+        if IsVehicleTyreBurst(vehicle, i, false) then
+            tireBurst[i + 1] = true -- Lua tables are 1-based
+            anyTireBurst = true
         end
     end
-    if hasMods then
-        SetVehicleModKit(vehicle, 0)
-    end
+    if anyTireBurst then props.tireBurst = tireBurst end
 
-    -- Set Plate Info (Only if vehicleId is provided)
-    if vehicleId then
-        local plateIndex, plateText = GetPlateInfoByVehicleId(vehicleId)
-        -- Provide defaults if lookup failed
-        plateIndex = plateIndex and tonumber(plateIndex) or 0
-        plateText = plateText or ""
-        SetVehicleNumberPlateTextIndex(vehicle, plateIndex)
-        SetVehicleNumberPlateText(vehicle, plateText)
-    end
-
-    -- Basic Properties
-    if properties.matrix then
-        local vectors = properties.matrix -- Use directly
-        local pos = vectors.position
-        -- Check if all components exist before setting
-        if vectors.forward and vectors.right and vectors.up and pos then
-            SetEntityMatrix(vehicle,
-                vectors.forward.x, vectors.forward.y, vectors.forward.z,
-                vectors.right.x, vectors.right.y, vectors.right.z,
-                vectors.up.x, vectors.up.y, vectors.up.z,
-                pos.x, pos.y, pos.z,
-                false, false, false, false) -- Added missing arguments for SetEntityMatrix
-            SetEntityHeading(vehicle, vectors.heading)
+    -- Window Status
+    local windowStatus = {}
+    local anyWindowBroken = false
+    for i = 0, 7 do                    -- Check common window indices
+        if not IsVehicleWindowIntact(vehicle, i) then
+            windowStatus[i + 1] = true -- Lua tables are 1-based
+            anyWindowBroken = true
         end
     end
+    if anyWindowBroken then props.windowStatus = windowStatus end
 
-    -- Use elseif where appropriate if only one native should handle a property group
+    return props
+end
+
+
+--- Fetches various properties of a vehicle, organized into categories.
+--- @param vehicle number The entity handle of the vehicle.
+--- @return table A table containing the vehicle's properties.
+function GetVehicleProperties(vehicle)
+    local props = {
+        model = GetEntityModel(vehicle),
+        type = GetVehicleType(vehicle),
+        matrix = GetEntityMatrixTable(vehicle), -- Position, rotation, heading
+    }
+
+    -- Merge properties from helper functions
+    for k, v in pairs(GetVehicleColorProperties(vehicle)) do props[k] = v end
+    for k, v in pairs(GetVehicleModProperties(vehicle)) do props[k] = v end
+    for k, v in pairs(GetVehicleStateProperties(vehicle)) do props[k] = v end
+
+    -- Note: Custom data (like odometer) is managed server-side via exports
+
+    return props
+end
+
+--- Helper function to apply color properties to a vehicle.
+--- @param vehicle number The entity handle of the vehicle.
+--- @param properties table The properties table containing color info.
+local function ApplyVehicleColorProperties(vehicle, properties)
+    -- RGB Colors take precedence
     if properties.rgbcolor1 then
         SetVehicleCustomPrimaryColour(vehicle, properties.rgbcolor1[1], properties.rgbcolor1[2], properties.rgbcolor1[3])
-        -- Only set standard color if RGB is not set
     elseif properties.color1 then
-        local _, currentSecondary = GetVehicleColours(vehicle) -- Get current secondary if needed
+        local _, currentSecondary = GetVehicleColours(vehicle)
         SetVehicleColours(vehicle, properties.color1, properties.color2 or currentSecondary)
-        -- Only set secondary if primary wasn't set (standard or RGB)
-    elseif properties.color2 then
+    elseif properties.color2 then -- Only secondary set (standard)
         local currentPrimary, _ = GetVehicleColours(vehicle)
         SetVehicleColours(vehicle, currentPrimary, properties.color2)
     end
@@ -259,13 +267,12 @@ function SetVehicleProperties(vehicle, properties, vehicleId)
     if properties.rgbcolor2 then
         SetVehicleCustomSecondaryColour(vehicle, properties.rgbcolor2[1], properties.rgbcolor2[2],
             properties.rgbcolor2[3])
-        -- Only set standard secondary if RGB secondary not set AND primary wasn't handled above
-    elseif not properties.rgbcolor1 and not properties.color1 and properties.color2 then
+    elseif not properties.rgbcolor1 and not properties.color1 and properties.color2 then -- Only secondary set (standard, ensure primary wasn't set)
         local currentPrimary, _ = GetVehicleColours(vehicle)
         SetVehicleColours(vehicle, currentPrimary, properties.color2)
     end
 
-    -- Extras colors need current values if only one is being set
+    -- Extras colors
     if properties.pearlescentColor or properties.wheelColor then
         local currentPearlescent, currentWheel = GetVehicleExtraColours(vehicle)
         SetVehicleExtraColours(vehicle, properties.pearlescentColor or currentPearlescent,
@@ -273,89 +280,40 @@ function SetVehicleProperties(vehicle, properties, vehicleId)
     end
 
     if properties.interiorColor then SetVehicleInteriorColour(vehicle, properties.interiorColor) end
+    if properties.windowTint then SetVehicleWindowTint(vehicle, properties.windowTint) end        -- Handles -1 correctly
+    if properties.xenonColor then SetVehicleXenonLightsColour(vehicle, properties.xenonColor) end -- Handles 255 correctly
 
-    -- Health, Fuel, Dirt (Ensure they are numbers)
-    if properties.bodyHealth then SetVehicleBodyHealth(vehicle, tonumber(properties.bodyHealth) + 0.0) end
-    if properties.engineHealth then SetVehicleEngineHealth(vehicle, tonumber(properties.engineHealth) + 0.0) end
-    if properties.fuelLevel then SetVehicleFuelLevel(vehicle, tonumber(properties.fuelLevel) + 0.0) end
-    if properties.dirtLevel then SetVehicleDirtLevel(vehicle, tonumber(properties.dirtLevel) + 0.0) end
-
-    -- Toggles & Simple Setters
-    if properties.lightsOn then SetVehicleLights(vehicle, 2) end
-    if properties.engineOn ~= nil then SetVehicleEngineOn(vehicle, properties.engineOn, true, false) end      -- `true` to instantly set, `false` to disable auto-start
-    if properties.sirenOn ~= nil then SetVehicleSiren(vehicle, properties.sirenOn) end
-    if properties.sirenAudioOn ~= nil then SetVehicleHasMutedSirens(vehicle, not properties.sirenAudioOn) end -- Corrected logic
-    if properties.wheels then SetVehicleWheelType(vehicle, properties.wheels) end
-    if properties.windowTint then SetVehicleWindowTint(vehicle, properties.windowTint) end                    -- Handles -1 correctly
-    if properties.xenonColor then SetVehicleXenonLightsColour(vehicle, properties.xenonColor) end             -- Handles 255 correctly
-
-    -- Neon Lights (Enable/Disable and Color)
+    -- Neon Lights
     if properties.neonEnabled then
         for i = 0, 3 do
-            -- Enable neon only if the corresponding index is true in the properties table
             SetVehicleNeonLightEnabled(vehicle, i, properties.neonEnabled[i + 1] or false)
         end
-        -- Only set color if neon was potentially enabled and color exists
         if properties.neonColor then
             SetVehicleNeonLightsColour(vehicle, properties.neonColor[1], properties.neonColor[2], properties.neonColor
                 [3])
         end
-    else -- If neonEnabled is not in properties, explicitly disable all
-        for i = 0, 3 do
-            SetVehicleNeonLightEnabled(vehicle, i, false)
-        end
-    end
-
-
-    -- Tire Burst (Use loop)
-    if properties.tireBurst then
-        for i = 0, 8 do
-            -- Check if the key (index + 1) exists and is true
-            if properties.tireBurst[i + 1] then
-                SetVehicleTyreBurst(vehicle, i, false, 1000.0) -- Burst the tire
-                -- Optional: Fix tires that are not listed as burst in properties?
-                -- else
-                --    SetVehicleTyreFixed(vehicle, i)
-            end
-        end
-    end
-
-    -- Window Status (Use loop)
-    if properties.windowStatus then
-        for i = 0, 7 do
-            -- Check if the key (index + 1) exists and is true (meaning broken)
-            if properties.windowStatus[i + 1] then
-                SmashVehicleWindow(vehicle, i)
-                -- Optional: Fix windows that are not listed as broken?
-                -- else
-                --     FixVehicleWindow(vehicle, i)
-            end
-        end
-    end
-
-    -- Extras (Toggle auto-repair only if extras are present)
-    if properties.extras then
-        SetVehicleAutoRepairDisabled(vehicle, false) -- Disable auto repair before setting extras
-        for idStr, enabled in pairs(properties.extras) do
-            local idNum = tonumber(idStr)
-            if idNum then                                           -- Ensure conversion worked
-                SetVehicleExtra(vehicle, idNum, enabled and 0 or 1) -- Set extra state (0 = on, 1 = off)
-            end
-        end
-        SetVehicleAutoRepairDisabled(vehicle, true) -- Re-enable auto repair after setting extras
+    else -- Explicitly disable if not in properties
+        for i = 0, 3 do SetVehicleNeonLightEnabled(vehicle, i, false) end
     end
 
     -- Tyre Smoke Color
     if properties.tyreSmokeColor then
         SetVehicleTyreSmokeColor(vehicle, properties.tyreSmokeColor[1], properties.tyreSmokeColor[2],
             properties.tyreSmokeColor[3])
-        -- Ensure smoke is toggled on if color is set (common expectation)
-        if not properties.modSmokeEnabled then -- Check if modSmokeEnabled wasn't explicitly set to false
+        -- Ensure smoke mod is toggled on if color is set and mod wasn't explicitly false
+        if properties.modSmokeEnabled ~= false then
             ToggleVehicleMod(vehicle, 20, true)
         end
     end
+end
 
-    -- Mods (Apply using the cosmetic names from GetVehicleProperties)
+--- Helper function to apply modification properties to a vehicle.
+--- Requires SetVehicleModKit(vehicle, 0) to be called beforehand if any mods are present.
+--- @param vehicle number The entity handle of the vehicle.
+--- @param properties table The properties table containing mod info.
+local function ApplyVehicleModProperties(vehicle, properties)
+    if properties.wheels then SetVehicleWheelType(vehicle, properties.wheels) end
+
     -- Reverse mapping from cosmetic name back to index
     local modIndexMapping = {
         Spoilers = 0,
@@ -402,7 +360,7 @@ function SetVehicleProperties(vehicle, properties, vehicleId)
         Livery = 48 -- Mod Slot 48 for livery mod
     }
 
-    -- Apply standard mods
+    -- Apply standard mods by name
     for modName, modIndex in pairs(modIndexMapping) do
         local propKey = 'mod' .. modName
         if properties[propKey] ~= nil then
@@ -416,19 +374,127 @@ function SetVehicleProperties(vehicle, properties, vehicleId)
     if properties.modXenon == true then ToggleVehicleMod(vehicle, 22, true) end
 
     -- Apply Livery (using GetVehicleLivery value if modLivery was used)
-    -- Note: Mod slot 48 also exists, applying both might be needed depending on vehicle/setup
     if properties.modLivery then
         SetVehicleLivery(vehicle, properties.modLivery)
-        -- Also set mod slot 48 if it wasn't set via the loop above
-        if not properties.modLivery then -- Check if modLivery (index 48) wasn't explicitly set
+        -- Also set mod slot 48 if it wasn't set via the loop above and modLivery property exists
+        if not properties.modLivery then -- Check if modLivery (index 48 named property) wasn't explicitly set
             SetVehicleMod(vehicle, 48, properties.modLivery, false)
         end
     end
 
+    -- Extras (Toggle auto-repair only if extras are present)
+    if properties.extras then
+        SetVehicleAutoRepairDisabled(vehicle, false) -- ensure this is off for extras to set right
+        for id, enabled in pairs(properties.extras) do
+            SetVehicleExtra(vehicle, tonumber(id), not enabled)
+        end
+    end
+end
 
-    -- Wait for mods to load IF mods were applied
+
+--- Helper function to apply state and damage properties to a vehicle.
+--- @param vehicle number The entity handle of the vehicle.
+--- @param properties table The properties table containing state/damage info.
+local function ApplyVehicleStateProperties(vehicle, properties)
+    -- Health, Fuel, Dirt (Ensure they are numbers)
+    if properties.bodyHealth then SetVehicleBodyHealth(vehicle, tonumber(properties.bodyHealth) + 0.0) end
+    if properties.engineHealth then SetVehicleEngineHealth(vehicle, tonumber(properties.engineHealth) + 0.0) end
+    if properties.fuelLevel then SetVehicleFuelLevel(vehicle, tonumber(properties.fuelLevel) + 0.0) end
+    if properties.dirtLevel then SetVehicleDirtLevel(vehicle, tonumber(properties.dirtLevel) + 0.0) end
+
+    -- Toggles
+    if properties.lightsOn == true then SetVehicleLights(vehicle, 3) else SetVehicleLights(vehicle, 4) end    -- Explicitly turn off if false
+    -- Note: Engine state requires careful handling, especially with keys/realistic start mods
+    if properties.engineOn ~= nil then SetVehicleEngineOn(vehicle, properties.engineOn, true, false) end      -- `true` to instantly set, `false` to disable auto-start
+    if properties.sirenOn ~= nil then SetVehicleSiren(vehicle, properties.sirenOn) end
+    if properties.sirenAudioOn ~= nil then SetVehicleHasMutedSirens(vehicle, not properties.sirenAudioOn) end -- Muted = NOT sirenAudioOn
+
+    -- Tire Burst
+    if properties.tireBurst then
+        for i = 0, 8 do
+            if properties.tireBurst[i + 1] then                -- Key is index + 1
+                SetVehicleTyreBurst(vehicle, i, false, 1000.0) -- Burst the tire
+                -- else SetVehicleTyreFixed(vehicle, i) -- Optional: Fix tires not listed as burst
+            end
+        end
+    end
+
+    -- Window Status
+    if properties.windowStatus then
+        for i = 0, 7 do
+            if properties.windowStatus[i + 1] then -- Key is index + 1
+                SmashVehicleWindow(vehicle, i)
+                -- else FixVehicleWindow(vehicle, i) -- Optional: Fix windows not listed as broken
+            end
+        end
+    end
+end
+
+
+--- Applies a table of properties to a vehicle.
+--- Organizes application into categories.
+--- @param vehicle number The entity handle of the vehicle.
+--- @param properties table The properties table (structure matching GetVehicleProperties output).
+--- @param vehicleId string|nil The persistent ID of the vehicle (used for plate info).
+function SetVehicleProperties(vehicle, properties, vehicleId)
+    if not properties or type(properties) ~= "table" then
+        warn(string.format(
+            "[CR-PersistentVehicles] SetVehicleProperties called with invalid properties for vehicle %d (ID: %s)",
+            vehicle,
+            vehicleId or "N/A"))
+        return
+    end
+
+    -- 1. Set Plate Info (Only if vehicleId is provided)
+    if vehicleId then
+        local plateIndex, plateText = GetPlateInfoByVehicleId(vehicleId)
+        plateIndex = plateIndex and tonumber(plateIndex) or 0
+        plateText = plateText or ""
+        SetVehicleNumberPlateTextIndex(vehicle, plateIndex)
+        SetVehicleNumberPlateText(vehicle, plateText)
+    end
+
+    -- 2. Set Position/Rotation (Matrix)
+    if properties.matrix and properties.matrix.position and properties.matrix.vectors and properties.matrix.heading then
+        local m = properties.matrix
+        local v = m.vectors
+        local p = m.position
+        -- Ensure all vector components exist before setting
+        if v.forward and v.right and v.up and p then
+            SetEntityMatrix(vehicle,
+                v.forward.x, v.forward.y, v.forward.z,
+                v.right.x, v.right.y, v.right.z,
+                v.up.x, v.up.y, v.up.z,
+                p.x, p.y, p.z,
+                false, false, false, false) -- Added missing arguments
+            SetEntityHeading(vehicle, m.heading)
+        end
+    else
+        warn(string.format("[CR-PersistentVehicles] Missing matrix data for vehicle %d (ID: %s)", vehicle,
+            vehicleId or "N/A"))
+    end
+
+    -- 3. Check if mods need to be applied to set ModKit
+    local hasMods = false
+    for key, _ in pairs(properties) do
+        if string.sub(key, 1, 3) == "mod" or key == "extras" or key == "wheels" then
+            hasMods = true
+            break
+        end
+    end
     if hasMods then
-        -- Consider adding a timeout to prevent infinite loops if mods never load
+        SetVehicleModKit(vehicle, 0)
+    end
+
+    -- 4. Apply Properties using Helper Functions
+    ApplyVehicleColorProperties(vehicle, properties)
+    if hasMods then -- Only apply mods if ModKit was set
+        ApplyVehicleModProperties(vehicle, properties)
+    end
+    ApplyVehicleStateProperties(vehicle, properties)
+
+    -- 5. Wait for mods to load IF mods were applied
+    if hasMods then
         local timeout = GetGameTimer() + 5000 -- 5 second timeout
         while not IsVehicleModLoadDone(vehicle) do
             Wait(0)
@@ -439,57 +505,20 @@ function SetVehicleProperties(vehicle, properties, vehicleId)
             end
         end
     end
+
+    -- 6. Unfreeze after properties are set
+    FreezeEntityPosition(vehicle, false)
+
+    -- 7. Set state flag indicating properties are applied (client-side confirmation)
+    -- This might be better handled by the server event confirmation logic
+    -- Entity(vehicle).state.nProperties = false -- Consider if needed here or just via server event ack
 end
 
---[[
-    Parses a vehicle UID string (expected format: model-plateIndex-plateText)
-    to extract the plate index and plate text components.
-
-    @param vehicleUID string: The unique identifier string for the vehicle.
-                           Example: "adder-0-MYPLATE"
-    @return string|nil: The plate index (as a string).
-    @return string|nil: The plate text.
-                       Returns nil, nil if the input string is invalid or
-                       does not match the expected 3-part format.
-]]
-function GetPlateInfoByVehicleId(vehicleUID)
-    -- 1. Input Validation: Ensure we have a non-empty string.
-    if type(vehicleUID) ~= "string" or vehicleUID == "" then
-        -- warn(string.format("GetPlateInfoByVehicleUID: Invalid input type or empty string: %s", type(vehicleUID)))
-        return nil, nil
-    end
-
-    local parts = {}
-    -- 2. Split the string: Use string.gmatch to split by the hyphen delimiter.
-    --    The pattern "([^%-]+)" captures sequences of one or more characters that are NOT hyphens.
-    for part in string.gmatch(vehicleUID, "([^%-]+)") do
-        table.insert(parts, part)
-    end
-
-    -- 3. Validate the result: Check if we got exactly 3 parts.
-    if #parts == 3 then
-        -- The new format is model-plateIndex-plateText
-        -- So, plateIndex is the 2nd part, and plateText is the 3rd part.
-        local plateIndex = parts[2]
-        local plateText = parts[3]
-        return plateIndex, plateText
-    else
-        -- warn(string.format("GetPlateInfoByVehicleUID: Unexpected format for UID '%s'. Expected 3 parts, found %d.", vehicleUID, #parts))
-        -- Return nil, nil if the format is incorrect.
-        return nil, nil
-    end
-end
-
-function GetVehicleUID(vehicle)
-    local vehicleModel = GetEntityModel(vehicle)
-    local plateText = GetVehicleNumberPlateText(vehicle)
-    local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
-
-    return vehicleModel .. "-" .. plateIndex .. "-" .. plateText
-end
-
-exports("GetVehicleUID", GetVehicleUID)
-
+--- Draws 3D text at specified world coordinates.
+--- @param x number World X coordinate.
+--- @param y number World Y coordinate.
+--- @param z number World Z coordinate.
+--- @param text string The text to display.
 function DrawText3D(x, y, z, text)
     SetDrawOrigin(x, y, z, 0)
     SetTextScale(0.35, 0.35)
