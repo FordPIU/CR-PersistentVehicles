@@ -89,21 +89,6 @@ function LoadVehicleData(resourceName)
         Vehicles = {} -- Start with an empty table if file doesn't exist
     end
 
-    -- Clear out any previously spawned persistent vehicles from this resource before respawning.
-    print(string.format("[%s] Clearing previously spawned persistent vehicles...", resourceName))
-    local deletedCount = 0
-    for _, vehicleEntityId in ipairs(GetAllVehicles()) do
-        -- Check state bag using safe navigation (?.) if available, otherwise check existence first
-        local state = Entity(vehicleEntityId)?.state
-        if state and state.isPersistent then
-            -- print(string.format("[%s] Deleting existing persistent vehicle (Entity ID: %d, UID: %s)", resourceName, vehicleEntityId, state.pId or "N/A"))
-            DO_NOT_RESPAWN[vehicleEntityId] = true -- Mark so entityRemoved doesn't respawn it
-            DeleteEntity(vehicleEntityId)
-            deletedCount = deletedCount + 1
-        end
-    end
-    print(string.format("[%s] Cleared %d previously spawned vehicles.", resourceName, deletedCount))
-
 
     -- Spawn all vehicles defined in the loaded data.
     print(string.format("[%s] Spawning all persistent vehicles from loaded data...", resourceName))
@@ -403,7 +388,6 @@ function SpawnAllPersistentVehicles()
             SpawnVehicle(vehicleUID, vehicleData)
             spawnCount = spawnCount + 1
             -- Add a small wait periodically if spawning many vehicles to avoid hitches
-            if spawnCount % 10 == 0 then Wait(50) end
         else
             -- Skipping 'true' entries (newly registered, props not yet saved)
             skippedCount = skippedCount + 1
