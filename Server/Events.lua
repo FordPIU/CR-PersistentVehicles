@@ -1,10 +1,9 @@
-local IS_STOPPING = false
+local IsLoading = true
+local IsStopping = false
 
 AddEventHandler("onResourceStart", function(resourceName)
     if resourceName == GetCurrentResourceName() then
         print("Resource starting...")
-
-        IS_STOPPING = false
 
         repeat
             Wait(1000)
@@ -12,18 +11,22 @@ AddEventHandler("onResourceStart", function(resourceName)
 
         print("Player is in server.. starting the loading of data..")
 
-        LoadVehicleData(resourceName)
+        LoadVehicleData()
+
+        IsLoading = false
+        TriggerClientEvent("CRPV_SETSERVERLOADING", -1, false)
     end
 end)
 
 AddEventHandler("onResourceStop", function(resourceName)
     if resourceName == GetCurrentResourceName() then
         print("Resource stopping, saving data...")
-        SaveVehicleData(resourceName)
+        SaveVehicleData()
 
-        IS_STOPPING = true
+        IsStopping = true
 
         for _, v in ipairs(GetAllVehicles()) do
+            DO_NOT_RESPAWN[v] = true
             DeleteEntity(v)
         end
     end
@@ -123,7 +126,7 @@ AddEventHandler("entityCreated", function(entity)
 end)
 
 AddEventHandler("entityRemoved", function(entity)
-    if IS_STOPPING then return end
+    if IsStopping then return end
     if DO_NOT_RESPAWN[entity] then
         DO_NOT_RESPAWN[entity] = nil
         return
@@ -136,11 +139,10 @@ AddEventHandler("entityRemoved", function(entity)
         print(string.format("[%s] Persistent vehicle removed unexpectedly (Entity: %d, UID: %s). Respawning...",
             GetCurrentResourceName(), entity, vehicleUID))
 
-        SetTimeout(Config.RespawnDelay or 1000, function()
-            SpawnVehicle(vehicleUID)
-        end)
-    else
-
-        print(string.format("[%s] Non-persistent entity %d removed.", GetCurrentResourceName(), entity))
+        SpawnVehicle(vehicleUID)
     end
+end)
+
+RegisterNetEvent("CRPV_GETSERVERLOADING", function()
+    TriggerClientEvent("CRPV_SETSERVERLOADING", source, IsLoading)
 end)

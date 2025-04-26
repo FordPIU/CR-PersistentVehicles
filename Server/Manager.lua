@@ -1,201 +1,104 @@
---[[
-    Manages the state, loading, saving, and spawning of persistent vehicles.
-    Includes API for managing custom vehicle data.
-]]
-
--- Stores the data for all persistent vehicles managed by this resource.
--- Key: Vehicle UID (string, format: "modelHash-plateIndex-plateText")
--- Value: Table containing vehicle properties, including an optional 'customData' sub-table.
---        OR `true` if the vehicle is newly registered but properties haven't been saved yet.
+RESOURCE_NAME = GetCurrentResourceName()
 local Vehicles = {}
-local dataNeedsSaving = false -- Flag to track if data has changed and needs saving
+DO_NOT_RESPAWN = {}
 
--- Table to prevent respawning vehicles that were intentionally deleted (e.g., via ForgetVehicle)
-DO_NOT_RESPAWN = {} -- Make sure this is accessible by Events.lua
-
---[[--------------------------------------------------------------------------
-    Utility Functions (Internal)
---------------------------------------------------------------------------]]
-
---- Gets the internal data table for a specific vehicle UID.
---- @param vehicleUID string The unique identifier of the vehicle.
---- @return table|nil The vehicle's data table, or nil if not found or data is not a table.
 local function getVehicleData(vehicleUID)
     if not vehicleUID then return nil end
     local data = Vehicles[vehicleUID]
-    -- Return data only if it's a table (meaning properties are saved)
     if type(data) == "table" then
         return data
     end
-    return nil -- Return nil if data is 'true' or vehicle doesn't exist
+    return nil
 end
 
---- Generates a unique identifier string for a vehicle based on its model, plate index, and plate text.
---- @param vehicle number The entity handle of the vehicle.
---- @return string The unique identifier string (e.g., "adder-0-MYPLATE"). Returns nil if vehicle is invalid.
 function GetVehicleUID(vehicle)
     if not DoesEntityExist(vehicle) or GetEntityType(vehicle) ~= 2 then
         return nil
     end
-    local vehicleModel = GetEntityModel(vehicle) -- This is typically the hash as a number
+    local vehicleModel = GetEntityModel(vehicle)
     local plateText = GetVehicleNumberPlateText(vehicle)
     local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
-
-    -- Using string format ensures consistent key type
     return string.format("%s-%d-%s", vehicleModel, plateIndex, plateText)
 end
 
--- Export for potential external use server-side
 exports("GetVehicleUID", GetVehicleUID)
 
 
---[[--------------------------------------------------------------------------
-    Data Loading and Saving (Optimized)
---------------------------------------------------------------------------]]
+function LoadVehicleData()
+    local vehiclesJson = LoadResourceFile(RESOURCE_NAME, "vehicles.json") or "[]"
+    Vehicles = json.decode(vehiclesJson)
 
---- Loads vehicle data from 'vehicles.json' when the resource starts.
---- Cleans the loaded data, removes existing persistent vehicles managed by this resource,
---- and then spawns vehicles from the loaded data.
---- @param resourceName string The name of the current resource.
-function LoadVehicleData(resourceName)
-    resourceName = resourceName or GetCurrentResourceName()
-    local vehiclesJson = LoadResourceFile(resourceName, "vehicles.json")
-    local loadedCount = 0
-
-    if vehiclesJson then
-        local success, decodedVehicles = pcall(json.decode, vehiclesJson) -- Use pcall for safe decoding
-        if success and type(decodedVehicles) == "table" then
-            print(string.format("[%s] Successfully loaded and decoded vehicles.json", resourceName))
-            Vehicles = {} -- Start fresh
-            -- Iterate and validate loaded data, removing 'true' entries
-            for uid, data in pairs(decodedVehicles) do
-                if type(data) == "table" then
-                    Vehicles[uid] = data
-                    loadedCount = loadedCount + 1
-                else
-                    print(string.format("[%s] Discarding invalid entry for UID '%s' (value was not a table).",
-                        resourceName, uid))
-                end
-            end
-            print(string.format("[%s] Loaded data for %d vehicles.", resourceName, loadedCount))
-        else
-            warn(string.format(
-                "[%s] Failed to decode vehicles.json or it's not a valid table. Starting fresh. Error: %s", resourceName,
-                tostring(decodedVehicles)))
-            Vehicles = {} -- Start with an empty table if loading/decoding fails
-        end
-    else
-        print(string.format("[%s] No vehicles.json file found. Starting with an empty vehicle list.", resourceName))
-        Vehicles = {} -- Start with an empty table if file doesn't exist
-    end
-
-
-    -- Spawn all vehicles defined in the loaded data.
-    print(string.format("[%s] Spawning all persistent vehicles from loaded data...", resourceName))
     SpawnAllPersistentVehicles()
-    print(string.format("[%s] Finished loading vehicle data.", resourceName))
 end
 
---- Saves the current state of the `Vehicles` table to 'vehicles.json' IF data has changed.
---- This is called periodically and after batch updates to reduce I/O.
---- @param resourceName string The name of the current resource.
-function SaveVehicleData(resourceName)
-    if not dataNeedsSaving then return end -- Only save if changes were made
-
-    resourceName = resourceName or GetCurrentResourceName()
-    print(string.format("[%s] Saving vehicle data...", resourceName))
-
-    -- Create a clean copy for saving, excluding 'true' entries
-    local vehiclesToSave = {}
-    for uid, data in pairs(Vehicles) do
-        if type(data) == "table" then
-            vehiclesToSave[uid] = data
-        end
-    end
-
-    local vehiclesJson = json.encode(vehiclesToSave, { indent = true, sort_keys = true })
-    local success = SaveResourceFile(resourceName, "vehicles.json", vehiclesJson, -1)
+function SaveVehicleData()
+    local vehiclesJson = json.encode(Vehicles)
+    local success = SaveResourceFile(RESOURCE_NAME, "vehicles.json", vehiclesJson, -1)
 
     if success then
-        dataNeedsSaving = false -- Reset flag only on successful save
-        print(string.format("[%s] Successfully saved vehicle data.", resourceName))
+        print("Successfully saved vehicle data.")
     else
-        warn(string.format("[%s] Failed to save vehicle data to vehicles.json!", resourceName))
-        -- Keep dataNeedsSaving = true so it tries again later
+        warn("Failed to save vehicle data to vehicles.json!")
     end
 end
 
 -- Periodic Saver Thread
 Citizen.CreateThread(function()
     while true do
-        Wait(Config.SaveInterval or 60000) -- Use configurable interval, default 60 seconds
-        SaveVehicleData(GetCurrentResourceName())
+        Wait(30000)
+        SaveVehicleData()
     end
 end)
 
---[[--------------------------------------------------------------------------
-    Vehicle State Management
---------------------------------------------------------------------------]]
-
---- Spawns a single persistent vehicle onto the server based on its stored data.
---- Sets initial state flags for the client-side script to handle property application.
---- @param vehicleUID string The unique identifier of the vehicle to spawn.
---- @param vehicleData table|nil Optional: The vehicle's data. If nil, retrieved from `Vehicles` table.
 function SpawnVehicle(vehicleUID, vehicleData)
-    vehicleData = vehicleData or getVehicleData(vehicleUID) -- Use helper to ensure data is a table
+    -- todo: Check that the vehicle isnt already spawned, deny the spawn
+    -- double spawning is occuring?
+    -- todo: Some vehicles still wont spawn until the player actually spawnts it themselves and loads the modeL????
+    vehicleData = vehicleData or getVehicleData(vehicleUID)
 
-    -- Ensure we have valid data (helper function already checks type)
-    if not vehicleData then
-        -- warn(string.format("[%s] Attempted to spawn vehicle with UID '%s', but no valid data found or data was 'true'.", GetCurrentResourceName(), vehicleUID))
+    if type(vehicleData) ~= "table" then
+        warn("Attempt to spawn vehicle " .. vehicleUID .. " with invalid data, removing from persistent.")
+        ForgetVehicle(nil, vehicleUID)
         return
     end
 
-    -- Validate essential data fields before attempting to create the vehicle.
     if not vehicleData.model or not vehicleData.type or not vehicleData.matrix or not vehicleData.matrix.position or not vehicleData.matrix.heading then
-        warn(string.format("[%s] Vehicle data for UID '%s' is incomplete or corrupt. Cannot spawn. Data: %s",
-            GetCurrentResourceName(), vehicleUID, json.encode(vehicleData)))
-        -- Consider removing the corrupt entry
-        -- ForgetVehicle(nil, vehicleUID)
+        warn("Attempt to spawn vehicle " .. vehicleUID .. " with malformed matrix, type, or model")
+        ForgetVehicle(nil, vehicleUID)
         return
     end
 
     local position = vector3(vehicleData.matrix.position.x, vehicleData.matrix.position.y, vehicleData.matrix.position.z)
     local heading = vehicleData.matrix.heading
-
-    -- Create the vehicle entity on the server.
-    local vehicleEntity = CreateVehicle(vehicleData.model, position.x, position.y, position.z, heading, true, false) -- Networked, not mission entity initially
-    local timeout = GetGameTimer() + 1000
+    local vehicleEntity = CreateVehicle(vehicleData.model, position.x, position.y, position.z, heading, true, false)
+    local timeout = GetGameTimer() + 120000
+    local requestedLoad = false
+    local requestLoadAt = GetGameTimer() + 60000
 
     repeat
         Wait(0)
+        if GetGameTimer() > requestLoadAt then
+            if not requestedLoad then
+                requestedLoad = true
+                TriggerClientEvent("CRPV_LOADMODEL", -1, vehicleData.model)
+            end
+        end
     until DoesEntityExist(vehicleEntity) or GetGameTimer() > timeout
 
     if not DoesEntityExist(vehicleEntity) then
-        warn(string.format("[%s] Failed to create vehicle entity for UID '%s' (Model: %s).", GetCurrentResourceName(),
-            vehicleUID, vehicleData.model))
+        warn("Failed to spawn vehicle " .. vehicleUID)
         return
     end
 
-    -- Wait briefly for entity to stabilize network-wise? Might not be needed.
-    -- Wait(100)
-
-    print(string.format("[%s] Spawning vehicle with UID: %s (Entity ID: %d)", GetCurrentResourceName(), vehicleUID,
-        vehicleEntity))
-
-    -- Freeze the vehicle initially to prevent physics issues until client applies properties.
     FreezeEntityPosition(vehicleEntity, true)
 
-    -- Set state bags for synchronization and identification:
     local state = Entity(vehicleEntity).state
-    state.isPersistent = true       -- Mark this entity as managed by this resource.
-    state.pId = vehicleUID          -- Store the persistent UID.
-    state.pProperties = vehicleData -- Store the target properties (used for respawn/client sync).
-    state.nProperties = true        -- Flag indicating the client needs to apply these properties.
+    state.isPersistent = true
+    state.pId = vehicleUID
+    state.pProperties = vehicleData
+    state.nProperties = true
 end
 
---- Registers a newly created vehicle entity as persistent.
---- Initially marks it with `true` in the `Vehicles` table until properties are received.
---- @param vehicleEntity number The entity ID of the vehicle to register.
 function NewVehicle(vehicleEntity)
     if not DoesEntityExist(vehicleEntity) or GetEntityType(vehicleEntity) ~= 2 then
         warn(string.format("[%s] Attempted to register an invalid or non-vehicle entity: %d", GetCurrentResourceName(),
@@ -210,12 +113,10 @@ function NewVehicle(vehicleEntity)
         return
     end
 
-    -- Check if vehicle with this UID already exists (e.g., from a rapid spawn/delete)
     if Vehicles[vehicleUID] then
         print(string.format("[%s] Vehicle with UID %s already exists. Ignoring new registration for entity %d.",
             GetCurrentResourceName(), vehicleUID, vehicleEntity))
-        -- Optionally delete the new duplicate entity
-        -- DeleteEntity(vehicleEntity)
+        DeleteEntity(vehicleEntity)
         return
     end
 
@@ -223,34 +124,22 @@ function NewVehicle(vehicleEntity)
     print(string.format("[%s] Registering new persistent vehicle with UID: %s (Entity ID: %d)", GetCurrentResourceName(),
         vehicleUID, vehicleEntity))
 
-    -- Add to the main table, marking as new (value = true)
     Vehicles[vehicleUID] = true
-    dataNeedsSaving = true -- Mark data as dirty (even though it's just 'true', indicates a change)
 
-    -- Set initial state bags for the entity
     local state = Entity(vehicleEntity).state
     state.isPersistent = true
     state.pId = vehicleUID
-    state.pProperties = nil -- No properties saved *yet*
-    -- nProperties is not set here; client should request/send properties.
-
-    -- No SaveVehicleData() here; saving happens when properties are updated or periodically.
+    state.pProperties = nil
 end
 
---- Updates the stored properties for a specific persistent vehicle.
---- Marks data as needing to be saved.
---- @param vehicleEntity number The entity ID of the vehicle whose properties are being updated.
---- @param properties table The new set of properties to store for the vehicle.
 function UpdateVehicle(vehicleEntity, properties)
     if not DoesEntityExist(vehicleEntity) or GetEntityType(vehicleEntity) ~= 2 then
-        -- This might happen if the vehicle is deleted between client sending and server processing
-        -- warn(string.format("[%s] UpdateVehicle: Entity %d no longer exists.", GetCurrentResourceName(), vehicleEntity))
         return
     end
 
-    local vehicleUID = Entity(vehicleEntity).state.pId -- Get UID from state bag first (more reliable)
+    local vehicleUID = Entity(vehicleEntity).state.pId
     if not vehicleUID then
-        vehicleUID = GetVehicleUID(vehicleEntity)      -- Fallback if state bag wasn't set yet
+        vehicleUID = GetVehicleUID(vehicleEntity)
     end
 
     if not vehicleUID then
@@ -261,9 +150,9 @@ function UpdateVehicle(vehicleEntity, properties)
 
     -- Ensure this vehicle is actually being tracked (could be 'true' or a table)
     if not Vehicles[vehicleUID] then
-        warn(string.format("[%s] UpdateVehicle: Attempted update for untracked vehicle UID: %s (Entity ID: %d)",
+        warn(string.format(
+            "[%s] UpdateVehicle: Attempted update for untracked vehicle UID: %s (Entity ID: %d), adding as persistent",
             GetCurrentResourceName(), vehicleUID, vehicleEntity))
-        return
     end
 
     -- Ensure the provided properties are a table.
@@ -280,17 +169,9 @@ function UpdateVehicle(vehicleEntity, properties)
         properties.customData = existingData.customData
     end
 
-    -- print(string.format("[%s] Updating properties for vehicle UID: %s (Entity ID: %d)", GetCurrentResourceName(), vehicleUID, vehicleEntity))
-
-    -- Store the new properties in the main table.
     Vehicles[vehicleUID] = properties
 
-    -- Update the state bag as well, in case it's needed before a respawn/resync.
     Entity(vehicleEntity).state.pProperties = properties
-    -- nProperties should be set to false by the client event handler ("CR.PV:PropertiesSet") after applying.
-
-    dataNeedsSaving = true -- Mark data as dirty
-    -- NO SaveVehicleData() here - saving is debounced/periodic
 end
 
 --- Removes a vehicle from the persistent tracking list and optionally deletes its current entity.
@@ -319,7 +200,6 @@ function ForgetVehicle(vehicleEntity, vehicleUID)
 
     -- Remove the vehicle from the tracking table.
     Vehicles[vehicleUID] = nil
-    dataNeedsSaving = true -- Mark data as dirty
 
     -- If a valid entity was provided and still exists, mark it for no respawn and delete it.
     if vehicleEntity and DoesEntityExist(vehicleEntity) then
@@ -365,8 +245,11 @@ function IsVehiclePersistent(vehicleEntity)
     -- Fallback check: If state bag isn't set yet, check if its UID is in the Vehicles table
     local vehicleUID = GetVehicleUID(vehicleEntity)
     if vehicleUID and Vehicles[vehicleUID] ~= nil then
-        -- If found in table but state bag isn't set, maybe set the state bag now?
-        -- Or just return true based on the table lookup.
+        local state = Entity(vehicleEntity).state
+        state.isPersistent = true
+        state.pId = vehicleUID
+        state.pProperties = Vehicles[vehicleUID]
+        state.nProperties = true
         return true
     end
 
