@@ -17,31 +17,29 @@ Citizen.CreateThread(function()
             if NetworkGetEntityOwner(v) == PlayerId() then
                 local vState = Entity(v).state
                 local playerIsDriver = GetPedInVehicleSeat(v, -1) == PlayerPedId()
+                local vehicleNetId = NetworkGetNetworkIdFromEntity(v)
+
+                SetNetworkIdExistsOnAllMachines(vehicleNetId, true)
 
                 if vState.isPersistent then
                     if vState.nProperties == true or vState.nProperties == nil then
                         SetVehicleProperties(v, vState.pProperties, vState.pId)
                         FreezeEntityPosition(v, false)
-                        propertiesSet[VehToNet(v)] = true
+                        propertiesSet[vehicleNetId] = true
                     else
                         if vState.pId ~= GetVehicleUID(v) then
                             if playerIsDriver then
-                                TriggerServerEvent("CR.PV:ForgetVehicleById", vState.pId)
-                                TriggerServerEvent("CR.PV:NewVehicle", VehToNet(v))
-
-                                local newVehicleProperties = {}
-                                newVehicleProperties[VehToNet(v)] = GetVehicleProperties(v)
-
-                                TriggerServerEvent("CR.PV:PropertiesUpdate", newVehicleProperties)
+                                TriggerServerEvent("CR.PV:VehiclePlateChange", vState.pId, vehicleNetId,
+                                    GetVehicleProperties(v))
                             end
 
                             DeleteEntity(v)
                         else
-                            propertiesUpdate[VehToNet(v)] = GetVehicleProperties(v)
+                            propertiesUpdate[vehicleNetId] = GetVehicleProperties(v)
                         end
                     end
                 elseif playerIsDriver then
-                    TriggerServerEvent("CR.PV:NewVehicle", VehToNet(v))
+                    TriggerServerEvent("CR.PV:NewVehicle", vehicleNetId)
                 end
             end
         end

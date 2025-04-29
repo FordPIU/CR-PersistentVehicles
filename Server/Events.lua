@@ -20,8 +20,8 @@ end)
 
 AddEventHandler("onResourceStop", function(resourceName)
     if resourceName == GetCurrentResourceName() then
-        print("Resource stopping, saving data...")
-        SaveVehicleData()
+        --print("Resource stopping, saving data...")
+        --SaveVehicleData()
 
         IsStopping = true
 
@@ -44,7 +44,7 @@ RegisterNetEvent("CR.PV:PropertiesSet", function(vehNets)
     end
 end)
 
-RegisterNetEvent("CR.PV:PropertiesUpdate", function(vehNets)
+RegisterNetEvent("CR.PV:PropertiesUpdate", function(vehNets, vehIdToForget)
     for vehNet, properties in pairs(vehNets) do
         local vehicle = NetworkGetEntityFromNetworkId(vehNet)
         if DoesEntityExist(vehicle) then
@@ -60,6 +60,10 @@ RegisterNetEvent("CR.PV:PropertiesUpdate", function(vehNets)
             warn(string.format("[%s] CR.PV:PropertiesUpdate: Received update for non-existent NetID %d",
                 GetCurrentResourceName(), vehNet))
         end
+    end
+
+    if vehIdToForget ~= nil then
+        ForgetVehicle(nil, vehIdToForget)
     end
 end)
 
@@ -145,4 +149,17 @@ end)
 
 RegisterNetEvent("CRPV_GETSERVERLOADING", function()
     TriggerClientEvent("CRPV_SETSERVERLOADING", source, IsLoading)
+end)
+
+RegisterNetEvent("CR.PV:VehiclePlateChange", function(oldVehId, newNetId, properties)
+    local newVeh = NetworkGetEntityFromNetworkId(newNetId)
+
+    if not DoesEntityExist(newVeh) then
+        warn("Attempt to change plate on non-exsistent vehicle??")
+        return
+    end
+    
+    NewVehicle(newVeh)
+    UpdateVehicle(newVeh, properties)
+    ForgetVehicle(nil, oldVehId)
 end)
