@@ -25,13 +25,18 @@ exports("GetVehicleUID", GetVehicleUID)
 
 
 function LoadVehicleData()
-    local vehiclesJson = LoadResourceFile(RESOURCE_NAME, "vehicles.json") or "[]"
+    local vehiclesJson = LoadResourceFile(RESOURCE_NAME, "vehicles.json")
+    if vehiclesJson == nil then error("No Vehicles.Json file") end
     Vehicles = json.decode(vehiclesJson)
 
     SpawnAllPersistentVehicles()
 end
 
 function SaveVehicleData()
+    if IsLoading then
+        warn("Attempt to save data while still loading data")
+        return
+    end
     local vehiclesJson = json.encode(Vehicles)
     local success = SaveResourceFile(RESOURCE_NAME, "vehicles.json", vehiclesJson, -1)
 
@@ -87,6 +92,17 @@ function SpawnVehicle(vehicleUID, vehicleData)
 
     if not DoesEntityExist(vehicleEntity) then
         warn("Failed to spawn vehicle " .. vehicleUID)
+        Citizen.CreateThread(function()
+            repeat
+                Wait(1000)
+            until DoesEntityExist(vehicleEntity)
+
+            local state = Entity(vehicleEntity).state
+            state.isPersistent = true
+            state.pId = vehicleUID
+            state.pProperties = vehicleData
+            state.nProperties = true
+        end)
         return
     end
 

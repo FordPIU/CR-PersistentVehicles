@@ -1,4 +1,4 @@
-local IsLoading = true
+IsLoading = true
 local IsStopping = false
 
 AddEventHandler("onResourceStart", function(resourceName)
