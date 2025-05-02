@@ -33,9 +33,17 @@ Citizen.CreateThread(function()
                                     GetVehicleProperties(v))
                             end
 
+                            Wait(2500)
+
                             DeleteEntity(v)
                         else
-                            propertiesUpdate[vehicleNetId] = GetVehicleProperties(v)
+                            local vehProps = GetVehicleProperties(v)
+
+                            if vehProps ~= nil and type(vehProps) == "table" then
+                                propertiesUpdate[vehicleNetId] = GetVehicleProperties(v)
+                            else
+                                warn("Unknown vehicle properties", vehProps)
+                            end
                         end
                     end
                 elseif playerIsDriver then

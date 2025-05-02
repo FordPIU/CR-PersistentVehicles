@@ -76,9 +76,9 @@ function SpawnVehicle(vehicleUID, vehicleData)
     local position = vector3(vehicleData.matrix.position.x, vehicleData.matrix.position.y, vehicleData.matrix.position.z)
     local heading = vehicleData.matrix.heading
     local vehicleEntity = CreateVehicle(vehicleData.model, position.x, position.y, position.z, heading, true, false)
-    local timeout = GetGameTimer() + 120000
+    local timeout = GetGameTimer() + 5000
     local requestedLoad = false
-    local requestLoadAt = GetGameTimer() + 60000
+    local requestLoadAt = GetGameTimer() + 1000
 
     repeat
         Wait(0)
@@ -102,6 +102,7 @@ function SpawnVehicle(vehicleUID, vehicleData)
             state.pId = vehicleUID
             state.pProperties = vehicleData
             state.nProperties = true
+            print("Vehicle " .. vehicleUID .. " delayed spawn successfully")
         end)
         return
     end
