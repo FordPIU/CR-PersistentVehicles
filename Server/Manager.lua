@@ -26,7 +26,7 @@ exports("GetVehicleUID", GetVehicleUID)
 
 function LoadVehicleData()
     local vehiclesJson = LoadResourceFile(RESOURCE_NAME, "vehicles.json")
-    if vehiclesJson == nil then error("No Vehicles.Json file") end
+    if vehiclesJson == nil then return end
     Vehicles = json.decode(vehiclesJson)
 
     SpawnAllPersistentVehicles()
