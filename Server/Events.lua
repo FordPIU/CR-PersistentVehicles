@@ -67,11 +67,11 @@ RegisterNetEvent("CR.PV:PropertiesUpdate", function(vehNets, vehIdToForget)
     end
 end)
 
-RegisterNetEvent("CR.PV:NewVehicle", function(vehNet)
+RegisterNetEvent("CR.PV:NewVehicle", function(vehNet, vehProps)
     local vehicle = NetworkGetEntityFromNetworkId(vehNet)
     if DoesEntityExist(vehicle) then
         -- print(string.format("[%s] Received request to register new vehicle NetID %d", GetCurrentResourceName(), vehNet))
-        NewVehicle(vehicle)
+        NewVehicle(vehicle, vehProps)
     else
         warn(string.format("[%s] CR.PV:NewVehicle: Received request for non-existent NetID %d", GetCurrentResourceName(),
             vehNet))

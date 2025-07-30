@@ -116,7 +116,7 @@ function SpawnVehicle(vehicleUID, vehicleData)
     state.nProperties = true
 end
 
-function NewVehicle(vehicleEntity)
+function NewVehicle(vehicleEntity, vehicleProperties)
     if not DoesEntityExist(vehicleEntity) or GetEntityType(vehicleEntity) ~= 2 then
         warn(string.format("[%s] Attempted to register an invalid or non-vehicle entity: %d", GetCurrentResourceName(),
             vehicleEntity))
@@ -141,12 +141,18 @@ function NewVehicle(vehicleEntity)
     print(string.format("[%s] Registering new persistent vehicle with UID: %s (Entity ID: %d)", GetCurrentResourceName(),
         vehicleUID, vehicleEntity))
 
-    Vehicles[vehicleUID] = true
+    Vehicles[vehicleUID] = vehicleProperties
 
     local state = Entity(vehicleEntity).state
     state.isPersistent = true
     state.pId = vehicleUID
-    state.pProperties = nil
+
+    if vehicleProperties then
+        state.pProperties = vehicleProperties
+        state.nProperties = false
+    else
+        state.pProperties = nil
+    end
 end
 
 function UpdateVehicle(vehicleEntity, properties)

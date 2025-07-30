@@ -10,6 +10,7 @@ Citizen.CreateThread(function()
     while true do
         Wait(2500)
 
+        local playerCoords = GetEntityCoords(PlayerPedId())
         local propertiesSet = {}
         local propertiesUpdate = {}
 
@@ -22,7 +23,8 @@ Citizen.CreateThread(function()
                 SetNetworkIdExistsOnAllMachines(vehicleNetId, true)
 
                 if vState.isPersistent then
-                    if vState.nProperties == true or vState.nProperties == nil then
+                    local vehicleCoords = GetEntityCoords(v)
+                    if (vState.nProperties == true or vState.nProperties == nil) and #(playerCoords - vehicleCoords) < 100.0 then
                         SetVehicleProperties(v, vState.pProperties, vState.pId)
                         FreezeEntityPosition(v, false)
                         propertiesSet[vehicleNetId] = true
@@ -47,7 +49,7 @@ Citizen.CreateThread(function()
                         end
                     end
                 elseif playerIsDriver then
-                    TriggerServerEvent("CR.PV:NewVehicle", vehicleNetId)
+                    TriggerServerEvent("CR.PV:NewVehicle", vehicleNetId, GetVehicleProperties(v))
                 end
             end
         end
