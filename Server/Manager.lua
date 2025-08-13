@@ -18,6 +18,8 @@ function GetVehicleUID(vehicle)
     local vehicleModel = GetEntityModel(vehicle)
     local plateText = GetVehicleNumberPlateText(vehicle)
     local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
+
+    -- Ensure model hash is used for uniqueness if needed, but GetEntityModel usually returns name hash
     return string.format("%s-%d-%s", vehicleModel, plateIndex, plateText)
 end
 

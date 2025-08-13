@@ -123,6 +123,7 @@ AddEventHandler("entityCreated", function(entity)
             else
                 print(string.format("[%s] Player spawned an existing persistent vehicle (Entity: %d)",
                     GetCurrentResourceName(), entity))
+                DO_NOT_RESPAWN[entity] = true
                 DeleteEntity(entity)
             end
         end
@@ -158,7 +159,7 @@ RegisterNetEvent("CR.PV:VehiclePlateChange", function(oldVehId, newNetId, proper
         warn("Attempt to change plate on non-exsistent vehicle??")
         return
     end
-    
+
     NewVehicle(newVeh)
     UpdateVehicle(newVeh, properties)
     ForgetVehicle(nil, oldVehId)

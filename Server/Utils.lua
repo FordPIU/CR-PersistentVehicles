@@ -1,13 +1,3 @@
-function GetVehicleUID(vehicle)
-    local vehicleModel = GetEntityModel(vehicle)
-    local plateText = GetVehicleNumberPlateText(vehicle)
-    local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
-
-    return vehicleModel .. "-" .. plateIndex .. "-" .. plateText
-end
-
-exports("GetVehicleUID", GetVehicleUID)
-
 function TrimVehiclesJson(vehiclesJson)
     --print("Trimming vehicle JSON data")
     local decodedVehicles = json.decode(vehiclesJson)
