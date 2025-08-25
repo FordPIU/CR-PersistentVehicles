@@ -75,7 +75,9 @@ function SpawnVehicle(vehicleUID, vehicleData)
         return
     end
 
-    local position = vector3(vehicleData.matrix.position.x, vehicleData.matrix.position.y, vehicleData.matrix.position.z)
+	local zCoord = vehicleData.matrix.position.z
+	if zCoord <= -200.0 then zCoord = 100.0 end
+    local position = vector3(vehicleData.matrix.position.x, vehicleData.matrix.position.y, zCoord)
     local heading = vehicleData.matrix.heading
     local vehicleEntity = CreateVehicle(vehicleData.model, position.x, position.y, position.z, heading, true, false)
     local timeout = GetGameTimer() + 5000
