@@ -28,7 +28,7 @@ Citizen.CreateThread(function()
                         if SetVehicleProperties(v, vState.pProperties) then
                             propertiesSet[vehicleNetId] = true
                         end
-                    else
+                    elseif vState.nProperties == false then
                         local vehProps = GetVehicleProperties(v)
 
                         if vehProps ~= nil and type(vehProps) == "table" then

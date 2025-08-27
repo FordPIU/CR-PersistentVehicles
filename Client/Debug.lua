@@ -9,10 +9,12 @@ Citizen.CreateThread(function()
 
             for _, vehicle in ipairs(GetGamePool("CVehicle")) do
                 local vState = Entity(vehicle).state
-                local vehicleId = vState.pId or GetVehicleUID(vehicle) or "N/A"
+                local vehicleId = vState.pId
                 local isPersistent = vState.isPersistent and "true" or "false"
                 local coords = GetEntityCoords(vehicle)
-                local text = "vehicleId: " .. vehicleId .. "\nisPersistent: " .. isPersistent .. "\nProperties Need Setting: " .. tostring(vState.nProperties)
+                local text = "vehicleId: " ..
+                vehicleId ..
+                "\nisPersistent: " .. isPersistent .. "\nProperties Need Setting: " .. tostring(vState.nProperties)
 
                 if #(plrCoords - coords) < 100.0 then
                     DrawText3D(coords.x, coords.y, coords.z + 1.0, text)
