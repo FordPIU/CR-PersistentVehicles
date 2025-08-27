@@ -24,28 +24,17 @@ Citizen.CreateThread(function()
 
                 if vState.isPersistent then
                     local vehicleCoords = GetEntityCoords(v)
-                    if (vState.nProperties == true or vState.nProperties == nil) and #(playerCoords - vehicleCoords) < 100.0 then
-                        SetVehicleProperties(v, vState.pProperties, vState.pId)
-                        FreezeEntityPosition(v, false)
-                        propertiesSet[vehicleNetId] = true
+                    if (vState.nProperties == true or vState.nProperties == nil) and #(playerCoords - vehicleCoords) < 250.0 then
+                        if SetVehicleProperties(v, vState.pProperties) then
+                            propertiesSet[vehicleNetId] = true
+                        end
                     else
-                        if vState.pId ~= GetVehicleUID(v) then
-                            if playerIsDriver then
-                                TriggerServerEvent("CR.PV:VehiclePlateChange", vState.pId, vehicleNetId,
-                                    GetVehicleProperties(v))
-                            end
+                        local vehProps = GetVehicleProperties(v)
 
-                            Wait(2500)
-
-                            DeleteEntity(v)
+                        if vehProps ~= nil and type(vehProps) == "table" then
+                            propertiesUpdate[vehicleNetId] = vehProps
                         else
-                            local vehProps = GetVehicleProperties(v)
-
-                            if vehProps ~= nil and type(vehProps) == "table" then
-                                propertiesUpdate[vehicleNetId] = GetVehicleProperties(v)
-                            else
-                                warn("Unknown vehicle properties", vehProps)
-                            end
+                            warn("Unknown vehicle properties", vehProps)
                         end
                     end
                 elseif playerIsDriver then

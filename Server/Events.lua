@@ -51,7 +51,7 @@ RegisterNetEvent("CR.PV:PropertiesUpdate", function(vehNets, vehIdToForget)
             if type(properties) == "table" then
                 UpdateVehicle(vehicle, properties)
             else
-                local uid = Entity(vehicle)?.state?.pId or GetVehicleUID(vehicle) or "N/A"
+                local uid = Entity(vehicle)?.state?.pId
                 warn(string.format(
                     "[%s] CR.PV:PropertiesUpdate: Received invalid properties type (%s) for NetID %d (UID: %s)",
                     GetCurrentResourceName(), type(properties), vehNet, uid))
@@ -83,7 +83,7 @@ end)
 RegisterNetEvent("CR.PV:ForgetVehicle", function(vehNet)
     local vehicle = NetworkGetEntityFromNetworkId(vehNet)
     if DoesEntityExist(vehicle) then
-        local uid = Entity(vehicle)?.state?.pId or GetVehicleUID(vehicle) or "N/A"
+        local uid = Entity(vehicle)?.state?.pId
         print(string.format("[%s] Received request to forget vehicle NetID %d (UID: %s)", GetCurrentResourceName(),
             vehNet, uid))
         ForgetVehicle(vehicle) -- Pass entity to ensure deletion
@@ -102,31 +102,6 @@ RegisterNetEvent("CR.PV:ForgetVehicleById", function(vehicleUID)
     else
         warn(string.format("[%s] CR.PV:ForgetVehicleById: Received invalid UID type (%s)", GetCurrentResourceName(),
             type(vehicleUID)))
-    end
-end)
-
-AddEventHandler("entityCreated", function(entity)
-    if not DoesEntityExist(entity) then return end
-
-    -- Check if it's a vehicle
-    if GetEntityType(entity) == 2 then
-        local driver = GetPedInVehicleSeat(entity, -1) -- Check driver seat
-
-        -- Check if driver exists and is a player
-        if DoesEntityExist(driver) and IsPedAPlayer(driver) then
-            -- Check if this vehicle is *already* persistent (e.g., spawned by our system)
-            if not IsVehiclePersistent(entity) then
-                local uid = GetVehicleUID(entity)
-                print(string.format("[%s] Auto-registering player-spawned vehicle (Entity: %d, UID: %s)",
-                    GetCurrentResourceName(), entity, uid or "N/A"))
-                NewVehicle(entity)
-            else
-                print(string.format("[%s] Player spawned an existing persistent vehicle (Entity: %d)",
-                    GetCurrentResourceName(), entity))
-                DO_NOT_RESPAWN[entity] = true
-                DeleteEntity(entity)
-            end
-        end
     end
 end)
 

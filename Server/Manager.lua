@@ -11,20 +11,14 @@ local function getVehicleData(vehicleUID)
     return nil
 end
 
-function GetVehicleUID(vehicle)
-    if not DoesEntityExist(vehicle) or GetEntityType(vehicle) ~= 2 then
-        return nil
-    end
-    local vehicleModel = GetEntityModel(vehicle)
-    local plateText = GetVehicleNumberPlateText(vehicle)
-    local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
-
-    -- Ensure model hash is used for uniqueness if needed, but GetEntityModel usually returns name hash
-    return string.format("%s-%d-%s", vehicleModel, plateIndex, plateText)
+function GenerateUID()
+    local uid = math.random(1000000, 9999999)
+    repeat
+        Wait(0)
+        uid = math.random(1000000, 9999999)
+    until Vehicles[uid] == nil
+    return uid
 end
-
-exports("GetVehicleUID", GetVehicleUID)
-
 
 function LoadVehicleData()
     local vehiclesJson = LoadResourceFile(RESOURCE_NAME, "vehicles.json")
@@ -75,8 +69,8 @@ function SpawnVehicle(vehicleUID, vehicleData)
         return
     end
 
-	local zCoord = vehicleData.matrix.position.z
-	if zCoord <= -200.0 then zCoord = 100.0 end
+    local zCoord = vehicleData.matrix.position.z
+    if zCoord <= -200.0 then zCoord = 100.0 end
     local position = vector3(vehicleData.matrix.position.x, vehicleData.matrix.position.y, zCoord)
     local heading = vehicleData.matrix.heading
     local vehicleEntity = CreateVehicle(vehicleData.model, position.x, position.y, position.z, heading, true, false)
@@ -127,7 +121,7 @@ function NewVehicle(vehicleEntity, vehicleProperties)
         return
     end
 
-    local vehicleUID = GetVehicleUID(vehicleEntity)
+    local vehicleUID = GenerateUID()
     if not vehicleUID then
         warn(string.format("[%s] Could not generate UID for new vehicle entity: %d", GetCurrentResourceName(),
             vehicleEntity))
@@ -165,9 +159,6 @@ function UpdateVehicle(vehicleEntity, properties)
     end
 
     local vehicleUID = Entity(vehicleEntity).state.pId
-    if not vehicleUID then
-        vehicleUID = GetVehicleUID(vehicleEntity)
-    end
 
     if not vehicleUID then
         warn(string.format("[%s] UpdateVehicle: Could not get UID for entity %d.", GetCurrentResourceName(),
@@ -208,7 +199,7 @@ end
 function ForgetVehicle(vehicleEntity, vehicleUID)
     -- Determine the Vehicle UID reliably
     if not vehicleUID and vehicleEntity and DoesEntityExist(vehicleEntity) then
-        vehicleUID = Entity(vehicleEntity).state.pId or GetVehicleUID(vehicleEntity)
+        vehicleUID = Entity(vehicleEntity).state.pId
     end
 
     if not vehicleUID then
@@ -231,7 +222,7 @@ function ForgetVehicle(vehicleEntity, vehicleUID)
     -- If a valid entity was provided and still exists, mark it for no respawn and delete it.
     if vehicleEntity and DoesEntityExist(vehicleEntity) then
         -- Verify the entity actually matches the UID we are forgetting
-        local currentEntityUID = Entity(vehicleEntity).state.pId or GetVehicleUID(vehicleEntity)
+        local currentEntityUID = Entity(vehicleEntity).state.pId
         if currentEntityUID == vehicleUID then
             print(string.format("[%s] Deleting entity %d associated with forgotten vehicle UID %s.",
                 GetCurrentResourceName(), vehicleEntity, vehicleUID))
@@ -270,7 +261,8 @@ function IsVehiclePersistent(vehicleEntity)
     end
 
     -- Fallback check: If state bag isn't set yet, check if its UID is in the Vehicles table
-    local vehicleUID = GetVehicleUID(vehicleEntity)
+    local vehicleUID = Entity(vehicleEntity)?.state?.pId
+
     if vehicleUID and Vehicles[vehicleUID] ~= nil then
         local state = Entity(vehicleEntity).state
         state.isPersistent = true

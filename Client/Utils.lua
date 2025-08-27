@@ -1,54 +1,11 @@
---- Parses a vehicle UID string (expected format: model-plateIndex-plateText)
---- to extract the plate index and plate text components.
---- @param vehicleUID string The unique identifier string for the vehicle. Example: "adder-0-MYPLATE"
---- @return string|nil The plate index (as a string).
---- @return string|nil The plate text. Returns nil, nil if the input string is invalid or format is wrong.
-function GetPlateInfoByVehicleId(vehicleUID)
-    if type(vehicleUID) ~= "string" or vehicleUID == "" then
-        return nil, nil
-    end
-
-    local parts = {}
-    for part in string.gmatch(vehicleUID, "([^%-]+)") do
-        table.insert(parts, part)
-    end
-
-    -- Expecting 3 parts: model-plateIndex-plateText
-    if #parts == 3 then
-        return parts[2], parts[3] -- plateIndex, plateText
-    else
-        -- warn(string.format("GetPlateInfoByVehicleUID: Unexpected format for UID '%s'. Expected 3 parts, found %d.", vehicleUID, #parts))
-        return nil, nil
-    end
-end
-
---- Generates a unique identifier string for a vehicle based on its model, plate index, and plate text.
---- @param vehicle number The entity handle of the vehicle.
---- @return string The unique identifier string (e.g., "adder-0-MYPLATE"). Returns nil if vehicle is invalid.
-function GetVehicleUID(vehicle)
-    if not DoesEntityExist(vehicle) or GetEntityType(vehicle) ~= 2 then
-        return nil
-    end
-    local vehicleModel = GetEntityModel(vehicle)
-    local plateText = GetVehicleNumberPlateText(vehicle)
-    local plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
-
-    -- Ensure model hash is used for uniqueness if needed, but GetEntityModel usually returns name hash
-    return string.format("%s-%d-%s", vehicleModel, plateIndex, plateText)
-end
-
--- Export for potential external use client-side
-exports("GetVehicleUID", GetVehicleUID)
-
-
 --- Gets the matrix data (position, rotation vectors, heading) for a vehicle entity.
 --- @param vehicle number The entity handle of the vehicle.
 --- @return table A table containing matrix vectors, position, and heading.
 function GetEntityMatrixTable(vehicle)
-    local forward, right, up, pos = GetEntityMatrix(vehicle)
+    local forward, right, up, _ = GetEntityMatrix(vehicle)
     return {
         vectors = { forward = forward, right = right, up = up },
-        position = pos,
+        position = GetEntityCoords(vehicle),
         heading = GetEntityHeading(vehicle)
     }
 end
@@ -237,6 +194,8 @@ function GetVehicleProperties(vehicle)
         model = GetEntityModel(vehicle),
         type = GetVehicleType(vehicle),
         matrix = GetEntityMatrixTable(vehicle), -- Position, rotation, heading
+        plate = GetVehicleNumberPlateText(vehicle),
+        plateIndex = GetVehicleNumberPlateTextIndex(vehicle)
     }
 
     -- Merge properties from helper functions
@@ -435,23 +394,21 @@ end
 --- Organizes application into categories.
 --- @param vehicle number The entity handle of the vehicle.
 --- @param properties table The properties table (structure matching GetVehicleProperties output).
---- @param vehicleId string|nil The persistent ID of the vehicle (used for plate info).
-function SetVehicleProperties(vehicle, properties, vehicleId)
+function SetVehicleProperties(vehicle, properties)
+    local vehicleId = Entity(vehicle).state.pId
+
     if not properties or type(properties) ~= "table" then
         warn(string.format(
-            "[CR-PersistentVehicles] SetVehicleProperties called with invalid properties for vehicle %d (ID: %s)",
+            "[CR-PersistentVehicles] SetVehicleProperties called with invalid properties for vehicle %d",
             vehicle,
             vehicleId or "N/A"))
         return
     end
 
     -- 1. Set Plate Info (Only if vehicleId is provided)
-    if vehicleId then
-        local plateIndex, plateText = GetPlateInfoByVehicleId(vehicleId)
-        plateIndex = plateIndex and tonumber(plateIndex) or 0
-        plateText = plateText or ""
-        SetVehicleNumberPlateTextIndex(vehicle, plateIndex)
-        SetVehicleNumberPlateText(vehicle, plateText)
+    if properties.plate and properties.plateIndex then
+        SetVehicleNumberPlateText(vehicle, properties.plate)
+        SetVehicleNumberPlateTextIndex(vehicle, properties.plateIndex)
     end
 
     -- 2. Set Position/Rotation (Matrix)
@@ -465,8 +422,8 @@ function SetVehicleProperties(vehicle, properties, vehicleId)
                 v.forward.x, v.forward.y, v.forward.z,
                 v.right.x, v.right.y, v.right.z,
                 v.up.x, v.up.y, v.up.z,
-                p.x, p.y, p.z,
-                false, false, false, false) -- Added missing arguments
+                p.x, p.y, p.z)
+            SetEntityCoords(vehicle, p.x, p.y, p.z, false, false, false, true)
             SetEntityHeading(vehicle, m.heading)
         end
     else
@@ -510,8 +467,7 @@ function SetVehicleProperties(vehicle, properties, vehicleId)
     FreezeEntityPosition(vehicle, false)
 
     -- 7. Set state flag indicating properties are applied (client-side confirmation)
-    -- This might be better handled by the server event confirmation logic
-    -- Entity(vehicle).state.nProperties = false -- Consider if needed here or just via server event ack
+    return true
 end
 
 --- Draws 3D text at specified world coordinates.
