@@ -1,60 +1,139 @@
-local SERVER_LOADING = true
+local FivemId
+local Vehicles = {}
+local UniqueIds = {}
 
-Citizen.CreateThread(function()
-    TriggerServerEvent("CRPV_GETSERVERLOADING")
+local function getUId()
+    local isUnique = false
+    local uniqueId = nil
 
     repeat
         Wait(0)
-    until SERVER_LOADING == false
+
+        uniqueId = tonumber(FivemId) .. math.random(100000, 999999)
+        isUnique = UniqueIds[uniqueId] == nil and Vehicles[uniqueId] == nil
+    until isUnique
+
+    UniqueIds[uniqueId] = true
+
+    return uniqueId
+end
+
+Citizen.CreateThread(function()
+    TriggerServerEvent("CR.PV:MyFiveMId")
+
+    local timeout = GetGameTimer() + 30000
+
+    repeat
+        Wait(0)
+        if GetGameTimer() > timeout then
+            return error("NO VALID FIVEM ID?")
+        end
+    until FivemId ~= nil
 
     while true do
-        Wait(2500)
+        Wait(1500)
+        TriggerServerEvent("CR.PV:GetVehicles")
 
-        local playerCoords = GetEntityCoords(PlayerPedId())
-        local propertiesSet = {}
-        local propertiesUpdate = {}
+        local playerVehicle = GetVehiclePedIsIn(PlayerPedId(), false)
 
-        for _, v in ipairs(GetGamePool("CVehicle")) do
-            if NetworkGetEntityOwner(v) == PlayerId() then
-                local vState = Entity(v).state
-                local playerIsDriver = GetPedInVehicleSeat(v, -1) == PlayerPedId()
-                local vehicleNetId = NetworkGetNetworkIdFromEntity(v)
-
-                SetNetworkIdExistsOnAllMachines(vehicleNetId, true)
-
-                if vState.isPersistent then
-                    local vehicleCoords = GetEntityCoords(v)
-                    if (vState.nProperties == true or vState.nProperties == nil) and #(playerCoords - vehicleCoords) < 250.0 then
-                        if SetVehicleProperties(v, vState.pProperties) then
-                            propertiesSet[vehicleNetId] = true
-                        end
-                    elseif vState.nProperties == false then
-                        local vehProps = GetVehicleProperties(v)
-
-                        if vehProps ~= nil and type(vehProps) == "table" then
-                            propertiesUpdate[vehicleNetId] = vehProps
-                        else
-                            warn("Unknown vehicle properties", vehProps)
-                        end
-                    end
-                elseif playerIsDriver then
-                    TriggerServerEvent("CR.PV:NewVehicle", vehicleNetId, GetVehicleProperties(v))
-                end
+        if DoesEntityExist(playerVehicle) then
+            if not Entity(playerVehicle).state.isPersistent then
+                local UId = getUId()
+                Entity(playerVehicle).state:set('isPersistent', true, true)
+                Entity(playerVehicle).state:set('persistentId', UId, true)
+                TriggerServerEvent("CR.PV:UpdateSingle", UId, GetVehicleProperties(playerVehicle))
             end
         end
-
-        --print("Triggering server event for properties set")
-        TriggerServerEvent("CR.PV:PropertiesSet", propertiesSet)
-
-        --print("Triggering server event for properties update")
-        TriggerServerEvent("CR.PV:PropertiesUpdate", propertiesUpdate)
     end
 end)
 
-RegisterNetEvent("CRPV_SETSERVERLOADING", function(setTo)
-    SERVER_LOADING = setTo
+RegisterNetEvent("CR.PV:SetFivemId", function(FiveMId)
+    FivemId = FiveMId
 end)
 
-RegisterNetEvent("CRPV_LOADMODEL", function(vehicleHash)
-    RequestModel(vehicleHash)
+local Loading = false
+RegisterNetEvent("CR.PV:ReturnVehicles", function(PersistentVehicles, Players, SpawnedVehicles)
+    if Loading == false then
+        Loading = true
+    else
+        return
+    end
+
+    local PropertiesUpdate = {}
+    local playerCoords = GetEntityCoords(PlayerPedId())
+
+    -- Despawn, Update and SpawnedVehicles part
+    for _, vehicle in ipairs(GetGamePool("CVehicle")) do
+        if Entity(vehicle).state.isPersistent then
+            local persistentId = Entity(vehicle).state.persistentId
+
+            if NetworkGetEntityOwner(vehicle) == PlayerId() then
+                local vehicleCoords = GetEntityCoords(vehicle)
+                local nearestPlayer, nearestDistance = GetNearestPlayer(vehicleCoords, Players)
+                local distance
+
+                if nearestPlayer then
+                    distance = nearestDistance
+                else
+                    distance = #(playerCoords - vehicleCoords)
+                end
+
+                if distance > 250.0 then
+                    -- Vehicles too far, delete it
+                    SetModelAsNoLongerNeeded(GetEntityModel(vehicle))
+                    DeleteEntity(vehicle)
+                    print("Removing vehicle " .. persistentId .. " due to distance")
+                else
+                    -- Vehicles within range, update it
+                    local properties = GetVehicleProperties(vehicle)
+
+                    if properties ~= nil and type(properties) == "table" then
+                        PropertiesUpdate[persistentId] = properties
+                        print("Updating vehicle properties for vehicle " .. persistentId)
+                    end
+                end
+            end
+
+            -- We set this anyoway so we dont try to respawn it
+            if SpawnedVehicles[persistentId] ~= true then
+                print("Vehicle " .. persistentId .. " is spawned but not really???")
+                SpawnedVehicles[persistentId] = true
+            end
+        end
+    end
+
+    -- Spawn part
+    for vehicleId, vehicleData in pairs(PersistentVehicles) do
+        -- Vehicle isnt spawned
+        if SpawnedVehicles[vehicleId] == nil and vehicleData ~= nil then
+            local jsonCoords = vehicleData.matrix.position
+            local vehicleCoords = vector3(jsonCoords.x, jsonCoords.y, jsonCoords.z)
+            local distance = #(playerCoords - vehicleCoords)
+
+            if distance < 250.0 and PlayerIsClosest(vehicleCoords, Players) then
+                -- Spawn the vehicle, within distance
+                print("Spawning vehicle " .. vehicleId)
+
+
+                -- Request the model
+                while not HasModelLoaded(vehicleData.model) do
+                    RequestModel(vehicleData.model)
+                    Wait(1)
+                end
+
+                -- Create the vehicle and set the properties
+                local vehicle = CreateVehicle(vehicleData.model, vehicleCoords[1], vehicleCoords[2], vehicleCoords
+                    [3], vehicleData.matrix.heading, true, true)
+
+                SetVehicleProperties(vehicle, vehicleData)
+                Entity(vehicle).state:set('isPersistent', true, true)
+                Entity(vehicle).state:set('persistentId', vehicleId, true)
+            end
+        end
+    end
+
+    -- Send updates
+    TriggerServerEvent("CR.PV:UpdateMultiple", PropertiesUpdate)
+
+    Loading = false
 end)

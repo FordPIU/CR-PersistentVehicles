@@ -1,6 +1,6 @@
 RESOURCE_NAME = GetCurrentResourceName()
-local Vehicles = {}
-DO_NOT_RESPAWN = {}
+Vehicles = {}
+local IsLoaded = false
 
 local function getVehicleData(vehicleUID)
     if not vehicleUID then return nil end
@@ -25,14 +25,15 @@ function LoadVehicleData()
     if vehiclesJson == nil then return end
     Vehicles = json.decode(vehiclesJson)
 
-    SpawnAllPersistentVehicles()
+    IsLoaded = true
 end
 
 function SaveVehicleData()
-    if IsLoading then
+    if not IsLoaded then
         warn("Attempt to save data while still loading data")
         return
     end
+
     local vehiclesJson = json.encode(Vehicles)
     local success = SaveResourceFile(RESOURCE_NAME, "vehicles.json", vehiclesJson, -1)
 
@@ -50,69 +51,6 @@ Citizen.CreateThread(function()
         SaveVehicleData()
     end
 end)
-
-function SpawnVehicle(vehicleUID, vehicleData)
-    -- todo: Check that the vehicle isnt already spawned, deny the spawn
-    -- double spawning is occuring?
-    -- todo: Some vehicles still wont spawn until the player actually spawnts it themselves and loads the modeL????
-    vehicleData = vehicleData or getVehicleData(vehicleUID)
-
-    if type(vehicleData) ~= "table" then
-        warn("Attempt to spawn vehicle " .. vehicleUID .. " with invalid data, removing from persistent.")
-        ForgetVehicle(nil, vehicleUID)
-        return
-    end
-
-    if not vehicleData.model or not vehicleData.type or not vehicleData.matrix or not vehicleData.matrix.position or not vehicleData.matrix.heading then
-        warn("Attempt to spawn vehicle " .. vehicleUID .. " with malformed matrix, type, or model")
-        ForgetVehicle(nil, vehicleUID)
-        return
-    end
-
-    local zCoord = vehicleData.matrix.position.z
-    if zCoord <= -200.0 then zCoord = 100.0 end
-    local position = vector3(vehicleData.matrix.position.x, vehicleData.matrix.position.y, zCoord)
-    local heading = vehicleData.matrix.heading
-    local vehicleEntity = CreateVehicle(vehicleData.model, position.x, position.y, position.z, heading, true, false)
-    local timeout = GetGameTimer() + 5000
-    local requestedLoad = false
-    local requestLoadAt = GetGameTimer() + 1000
-
-    repeat
-        Wait(0)
-        if GetGameTimer() > requestLoadAt then
-            if not requestedLoad then
-                requestedLoad = true
-                TriggerClientEvent("CRPV_LOADMODEL", -1, vehicleData.model)
-            end
-        end
-    until DoesEntityExist(vehicleEntity) or GetGameTimer() > timeout
-
-    if not DoesEntityExist(vehicleEntity) then
-        warn("Failed to spawn vehicle " .. vehicleUID)
-        Citizen.CreateThread(function()
-            repeat
-                Wait(1000)
-            until DoesEntityExist(vehicleEntity)
-
-            local state = Entity(vehicleEntity).state
-            state.isPersistent = true
-            state.pId = vehicleUID
-            state.pProperties = vehicleData
-            state.nProperties = true
-            print("Vehicle " .. vehicleUID .. " delayed spawn successfully")
-        end)
-        return
-    end
-
-    FreezeEntityPosition(vehicleEntity, true)
-
-    local state = Entity(vehicleEntity).state
-    state.isPersistent = true
-    state.pId = vehicleUID
-    state.pProperties = vehicleData
-    state.nProperties = true
-end
 
 function NewVehicle(vehicleEntity, vehicleProperties)
     if not DoesEntityExist(vehicleEntity) or GetEntityType(vehicleEntity) ~= 2 then
@@ -226,7 +164,6 @@ function ForgetVehicle(vehicleEntity, vehicleUID)
         if currentEntityUID == vehicleUID then
             print(string.format("[%s] Deleting entity %d associated with forgotten vehicle UID %s.",
                 GetCurrentResourceName(), vehicleEntity, vehicleUID))
-            DO_NOT_RESPAWN[vehicleEntity] = true -- Prevent respawn via entityRemoved event
             local state = Entity(vehicleEntity).state
             if state then
                 state.isPersistent = nil -- Clear the persistent flag
@@ -277,155 +214,3 @@ end
 
 -- Export for external checks server-side
 exports('IsVehiclePersistent', IsVehiclePersistent)
-
-
---- Iterates through the `Vehicles` table and spawns all vehicles that have valid data (i.e., not 'true').
-function SpawnAllPersistentVehicles()
-    print(string.format("[%s] Starting SpawnAllPersistentVehicles...", GetCurrentResourceName()))
-    local spawnCount = 0
-    local skippedCount = 0
-    for vehicleUID, vehicleData in pairs(Vehicles) do
-        -- Only spawn if the vehicleData is a table (meaning properties have been saved).
-        if type(vehicleData) == "table" then
-            SpawnVehicle(vehicleUID, vehicleData)
-            spawnCount = spawnCount + 1
-            -- Add a small wait periodically if spawning many vehicles to avoid hitches
-        else
-            -- Skipping 'true' entries (newly registered, props not yet saved)
-            skippedCount = skippedCount + 1
-            -- print(string.format("[%s] Skipping spawn for vehicle UID '%s' as its data is not a table (likely value is 'true').", GetCurrentResourceName(), vehicleUID))
-        end
-    end
-    print(string.format(
-        "[%s] SpawnAllPersistentVehicles finished. Spawned %d vehicles, skipped %d (pending properties).",
-        GetCurrentResourceName(), spawnCount, skippedCount))
-end
-
---[[--------------------------------------------------------------------------
-    Custom Variable API Exports
---------------------------------------------------------------------------]]
-
---- Sets a custom variable for a persistent vehicle.
---- @param vehicleUID string The unique identifier of the vehicle.
---- @param key string The key for the custom variable.
---- @param value any The value to store (must be serializable to JSON).
---- @return boolean True if successful, false otherwise.
-exports('SetCustomVehicleVariable', function(vehicleUID, key, value)
-    local data = getVehicleData(vehicleUID)
-    if not data then
-        -- If vehicle exists but only has 'true' entry, initialize properly
-        if Vehicles[vehicleUID] == true then
-            Vehicles[vehicleUID] = { customData = {} }
-            data = Vehicles[vehicleUID]
-        else
-            warn(string.format("[%s] SetCustomVehicleVariable: Vehicle UID '%s' not found or has no data table.",
-                GetCurrentResourceName(), vehicleUID))
-            return false -- Vehicle not found or no data table yet
-        end
-    end
-
-    if not data.customData then
-        data.customData = {} -- Initialize if it doesn't exist
-    end
-
-    -- Prevent overwriting core properties if key matches
-    if data[key] and not data.customData[key] then
-        warn(string.format(
-            "[%s] SetCustomVehicleVariable: Attempted to overwrite core property '%s' on UID '%s'. Use customData sub-table.",
-            GetCurrentResourceName(), key, vehicleUID))
-        return false
-    end
-
-
-    data.customData[key] = value
-    dataNeedsSaving = true -- Mark for saving
-    -- Optional: Trigger immediate save? Generally rely on periodic/batch save.
-    -- SaveVehicleData()
-    return true
-end)
-
---- Gets a specific custom variable for a persistent vehicle.
---- @param vehicleUID string The unique identifier of the vehicle.
---- @param key string The key of the variable to retrieve.
---- @return any The value of the variable, or nil if not found.
-exports('GetCustomVehicleVariable', function(vehicleUID, key)
-    local data = getVehicleData(vehicleUID)
-    if not data or not data.customData then
-        return nil
-    end
-    return data.customData[key] -- Returns nil if key doesn't exist in customData
-end)
-
---- Gets all custom variables for a persistent vehicle.
---- @param vehicleUID string The unique identifier of the vehicle.
---- @return table|nil A table containing all custom variables, or nil if none found or vehicle data invalid.
-exports('GetAllCustomVehicleVariables', function(vehicleUID)
-    local data = getVehicleData(vehicleUID)
-    if not data or not data.customData then
-        return nil
-    end
-    -- Return a copy to prevent external modification of the internal table
-    local copy = {}
-    for k, v in pairs(data.customData) do
-        copy[k] = v
-    end
-    return copy
-end)
-
---- Adds or updates multiple custom variables for a persistent vehicle.
---- Merges the provided table with existing custom data.
---- @param vehicleUID string The unique identifier of the vehicle.
---- @param varsTable table A table containing key-value pairs to add/update.
---- @return boolean True if successful, false otherwise.
-exports('AddCustomVehicleVariables', function(vehicleUID, varsTable)
-    if type(varsTable) ~= 'table' then
-        warn(string.format("[%s] AddCustomVehicleVariables: varsTable must be a table for UID '%s'.",
-            GetCurrentResourceName(), vehicleUID))
-        return false
-    end
-
-    local data = getVehicleData(vehicleUID)
-    if not data then
-        -- If vehicle exists but only has 'true' entry, initialize properly
-        if Vehicles[vehicleUID] == true then
-            Vehicles[vehicleUID] = { customData = {} }
-            data = Vehicles[vehicleUID]
-        else
-            warn(string.format("[%s] AddCustomVehicleVariables: Vehicle UID '%s' not found or has no data table.",
-                GetCurrentResourceName(), vehicleUID))
-            return false -- Vehicle not found or no data table yet
-        end
-    end
-
-    if not data.customData then
-        data.customData = {} -- Initialize if it doesn't exist
-    end
-
-    local changed = false
-    for key, value in pairs(varsTable) do
-        -- Optional: Add check to prevent overwriting core props?
-        if data[key] and not data.customData[key] then
-            warn(string.format(
-                "[%s] AddCustomVehicleVariables: Skipping key '%s' as it conflicts with a core property on UID '%s'.",
-                GetCurrentResourceName(), key, vehicleUID))
-        else
-            if data.customData[key] ~= value then -- Check if value actually changed
-                data.customData[key] = value      -- Update/add each variable
-                changed = true
-            end
-        end
-    end
-
-    if changed then
-        dataNeedsSaving = true -- Mark for saving only if something changed
-    end
-    return true
-end)
-
---- Gets the entire persistent data table for a vehicle (including core props and customData).
---- Use with caution, modifying the returned table directly bypasses saving logic.
---- @param vehicleUID string The unique identifier of the vehicle.
---- @return table|nil The full data table, or nil if not found.
-exports('GetRawVehicleData', function(vehicleUID)
-    return getVehicleData(vehicleUID) -- Returns the internal table or nil
-end)

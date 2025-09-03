@@ -487,3 +487,42 @@ function DrawText3D(x, y, z, text)
     DrawText(0.0, 0.0)
     ClearDrawOrigin()
 end
+
+function GetNearestPlayer(coords, Players)
+    local nearestPlayer = nil
+    local nearestDist = 500.0
+
+    for playerId, playerCoords in pairs(Players) do
+        if playerCoords ~= nil then
+            local distance = #(coords - playerCoords)
+
+            print(playerId, distance)
+
+            if nearestDist > distance then
+                nearestPlayer = playerId
+                nearestDist = distance
+            end
+        else
+            print("Unknown coords for player " .. playerId)
+        end
+    end
+
+    return nearestPlayer, nearestDist
+end
+
+function PlayerIsClosest(coords, Players)
+    local serverId, _ = GetNearestPlayer(coords, Players)
+    local playerServerId = GetPlayerServerId(PlayerId())
+
+    return tonumber(serverId) == tonumber(playerServerId)
+end
+
+function GetTableLength(table)
+    local i = 0
+
+    for _, _ in pairs(table) do
+        i = i + 1
+    end
+
+    return i
+end
