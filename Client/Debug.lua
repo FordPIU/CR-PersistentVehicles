@@ -12,9 +12,7 @@ Citizen.CreateThread(function()
                 local vehicleId = vState.pId
                 local isPersistent = vState.isPersistent and "true" or "false"
                 local coords = GetEntityCoords(vehicle)
-                local text = "vehicleId: " ..
-                vehicleId ..
-                "\nisPersistent: " .. isPersistent .. "\nProperties Need Setting: " .. tostring(vState.nProperties)
+                local text = "vehicleId: " .. vehicleId .. "\nisPersistent: " .. isPersistent .. "\nProperties Need Setting: " .. tostring(vState.nProperties)
 
                 if #(plrCoords - coords) < 100.0 then
                     DrawText3D(coords.x, coords.y, coords.z + 1.0, text)
