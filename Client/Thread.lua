@@ -52,7 +52,7 @@ RegisterNetEvent("CR.PV:SetFivemId", function(FiveMId)
 end)
 
 local Loading = false
-RegisterNetEvent("CR.PV:ReturnVehicles", function(PersistentVehicles, Players, SpawnedVehicles)
+RegisterNetEvent("CR.PV:ReturnVehicles", function(PlayerVehicles, Players, SpawnedVehicles)
     if Loading == false then
         Loading = true
     else
@@ -67,17 +67,9 @@ RegisterNetEvent("CR.PV:ReturnVehicles", function(PersistentVehicles, Players, S
         if Entity(vehicle).state.isPersistent then
             local persistentId = Entity(vehicle).state.persistentId
 
-            if NetworkGetEntityOwner(vehicle) == PlayerId() then
+            if PlayerVehicles[persistentId] ~= nil then
                 local vehicleCoords = GetEntityCoords(vehicle)
-                local nearestPlayer, nearestDistance = GetNearestPlayer(vehicleCoords, Players)
-                local distance
-
-                if nearestPlayer then
-                    distance = nearestDistance
-                else
-                    distance = #(playerCoords - vehicleCoords)
-                end
-
+                local distance = #(playerCoords - vehicleCoords)
                 if distance > 250.0 then
                     -- Vehicles too far, delete it
                     SetModelAsNoLongerNeeded(GetEntityModel(vehicle))
@@ -103,14 +95,14 @@ RegisterNetEvent("CR.PV:ReturnVehicles", function(PersistentVehicles, Players, S
     end
 
     -- Spawn part
-    for vehicleId, vehicleData in pairs(PersistentVehicles) do
+    for vehicleId, vehicleData in pairs(PlayerVehicles) do
         -- Vehicle isnt spawned
         if SpawnedVehicles[vehicleId] == nil and vehicleData ~= nil then
             local jsonCoords = vehicleData.matrix.position
             local vehicleCoords = vector3(jsonCoords.x, jsonCoords.y, jsonCoords.z)
             local distance = #(playerCoords - vehicleCoords)
 
-            if distance < 250.0 and PlayerIsClosest(vehicleCoords, Players) then
+            if distance < 250.0 then
                 -- Spawn the vehicle, within distance
                 print("Spawning vehicle " .. vehicleId)
 
@@ -136,4 +128,6 @@ RegisterNetEvent("CR.PV:ReturnVehicles", function(PersistentVehicles, Players, S
     TriggerServerEvent("CR.PV:UpdateMultiple", PropertiesUpdate)
 
     Loading = false
+
+    print("Tracked Vehicles: " .. GetTableLength(PlayerVehicles))
 end)

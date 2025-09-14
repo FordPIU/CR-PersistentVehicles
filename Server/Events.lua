@@ -49,12 +49,36 @@ RegisterNetEvent("CR.PV:GetVehicles", function()
     if GetGameTimer() > (LastSyncTime + 1000) then
         -- Fetch all players
         local Players = {}
+        local PlayerVehicles = {}
 
         for _, playerId in ipairs(GetPlayers()) do
             local playerPed = GetPlayerPed(playerId)
 
             if DoesEntityExist(playerPed) then
                 Players[playerId] = GetEntityCoords(playerPed)
+            end
+        end
+
+        for vehicleId, vehicleData in pairs(Vehicles) do
+            local coordsJson = vehicleData.matrix.position
+            local coords = vector3(coordsJson.x, coordsJson.y, coordsJson.z)
+            local nearestPlayer = nil
+            local nearestDist = 500.0
+
+            -- Get nearest player to the vehicle
+            for playerId, playerCoords in pairs(Players) do
+                local dist = #(playerCoords - coords)
+
+                if dist < nearestDist then
+                    nearestPlayer = playerId
+                    nearestDist = dist
+                end
+            end
+
+            -- Assign the vehicle to nearest player
+            if nearestPlayer then
+                PlayerVehicles[nearestPlayer] = PlayerVehicles[nearestPlayer] or {}
+                PlayerVehicles[nearestPlayer][vehicleId] = vehicleData
             end
         end
 
@@ -67,7 +91,10 @@ RegisterNetEvent("CR.PV:GetVehicles", function()
             end
         end
 
-        TriggerClientEvent("CR.PV:ReturnVehicles", -1, Vehicles, Players, SpawnedVehicles)
+        for playerId, playerVehicles in pairs(PlayerVehicles) do
+            TriggerClientEvent("CR.PV:ReturnVehicles", playerId, playerVehicles, Players, SpawnedVehicles)
+        end
+
         LastSyncTime = GetGameTimer()
     end
 end)
