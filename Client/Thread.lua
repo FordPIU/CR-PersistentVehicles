@@ -1,6 +1,7 @@
 local FivemId
 local Vehicles = {}
 local UniqueIds = {}
+local SpawnedIdsPending = {}
 
 local function getUId()
     local isUnique = false
@@ -39,11 +40,28 @@ Citizen.CreateThread(function()
         if DoesEntityExist(playerVehicle) then
             if not Entity(playerVehicle).state.isPersistent then
                 local UId = getUId()
+                local NetId = NetworkGetNetworkIdFromEntity(playerVehicle)
+
+                SetNetworkIdExistsOnAllMachines(NetId, true)
+                SetNetworkIdCanMigrate(NetId, true)
+
                 Entity(playerVehicle).state:set('isPersistent', true, true)
                 Entity(playerVehicle).state:set('persistentId', UId, true)
+                Entity(playerVehicle).state:set('persistentHash', GetEntityModel(playerVehicle), true)
                 TriggerServerEvent("CR.PV:UpdateSingle", UId, GetVehicleProperties(playerVehicle))
+                print("Registered players current vehicle")
+            else
+                local properties = GetVehicleProperties(playerVehicle)
+                local persistentId = Entity(playerVehicle).state.persistentId
+
+                if properties and persistentId then
+                    TriggerServerEvent("CR.PV:UpdateSingle", persistentId, properties)
+                    print("Updated players current vehicle")
+                end
             end
         end
+
+        print("CR.PV Tick")
     end
 end)
 
@@ -64,7 +82,7 @@ RegisterNetEvent("CR.PV:ReturnVehicles", function(PlayerVehicles, Players, Spawn
 
     -- Despawn, Update and SpawnedVehicles part
     for _, vehicle in ipairs(GetGamePool("CVehicle")) do
-        if Entity(vehicle).state.isPersistent then
+        if Entity(vehicle).state.isPersistent and GetEntityModel(vehicle) == Entity(vehicle).state.persistentHash and Entity(vehicle).state.persistentId ~= nil then
             local persistentId = Entity(vehicle).state.persistentId
 
             if PlayerVehicles[persistentId] ~= nil then
@@ -75,6 +93,8 @@ RegisterNetEvent("CR.PV:ReturnVehicles", function(PlayerVehicles, Players, Spawn
                     SetModelAsNoLongerNeeded(GetEntityModel(vehicle))
                     DeleteEntity(vehicle)
                     print("Removing vehicle " .. persistentId .. " due to distance")
+
+                    SpawnedIdsPending[#SpawnedIdsPending + 1] = { persistentId, false }
                 else
                     -- Vehicles within range, update it
                     local properties = GetVehicleProperties(vehicle)
@@ -89,7 +109,7 @@ RegisterNetEvent("CR.PV:ReturnVehicles", function(PlayerVehicles, Players, Spawn
             -- We set this anyoway so we dont try to respawn it
             if SpawnedVehicles[persistentId] ~= true then
                 print("Vehicle " .. persistentId .. " is spawned but not really???")
-                SpawnedVehicles[persistentId] = true
+                DeleteEntity(vehicle)
             end
         end
     end
@@ -108,20 +128,38 @@ RegisterNetEvent("CR.PV:ReturnVehicles", function(PlayerVehicles, Players, Spawn
 
 
                 -- Request the model
+                local timeout = GetGameTimer() + 500
                 while not HasModelLoaded(vehicleData.model) do
                     RequestModel(vehicleData.model)
+                    if GetGameTimer() > timeout then
+                        print("Vehicle " .. vehicleId .. " failed to load model, skipping")
+                        --TriggerServerEvent("CR.PV:ForgetVehicleById", vehicleId)
+                        goto skip_this_vehicle
+                    end
                     Wait(1)
                 end
 
                 -- Create the vehicle and set the properties
-                local vehicle = CreateVehicle(vehicleData.model, vehicleCoords[1], vehicleCoords[2], vehicleCoords
-                    [3], vehicleData.matrix.heading, true, true)
+                local newvehicle = CreateVehicle(vehicleData.model, vehicleCoords[1], vehicleCoords[2], vehicleCoords
+                    [3], vehicleData.matrix.heading, true, false)
 
-                SetVehicleProperties(vehicle, vehicleData)
-                Entity(vehicle).state:set('isPersistent', true, true)
-                Entity(vehicle).state:set('persistentId', vehicleId, true)
+                print("Created vehicle " .. vehicleId)
+
+                SpawnedIdsPending[#SpawnedIdsPending + 1] = { vehicleId, true }
+
+                SetEntityCoords(newvehicle, vehicleCoords[1], vehicleCoords[2], vehicleCoords[3], false, false, false,
+                    false)
+                SetEntityHeading(newvehicle, vehicleData.matrix.heading)
+                SetVehicleProperties(newvehicle, vehicleData)
+                SetNetworkIdCanMigrate(NetworkGetNetworkIdFromEntity(newvehicle), true)
+                SetNetworkIdExistsOnAllMachines(NetworkGetNetworkIdFromEntity(newvehicle), true)
+                Entity(newvehicle).state:set('isPersistent', true, true)
+                Entity(newvehicle).state:set('persistentId', vehicleId, true)
+                Entity(newvehicle).state:set('persistentHash', vehicleData.model, true)
             end
         end
+
+        ::skip_this_vehicle::
     end
 
     -- Send updates
@@ -130,4 +168,14 @@ RegisterNetEvent("CR.PV:ReturnVehicles", function(PlayerVehicles, Players, Spawn
     Loading = false
 
     print("Tracked Vehicles: " .. GetTableLength(PlayerVehicles))
+end)
+
+Citizen.CreateThread(function()
+    while true do
+        Wait(500)
+        if #SpawnedIdsPending > 0 then
+            TriggerServerEvent("CR.PV:ISpawned", SpawnedIdsPending)
+            SpawnedIdsPending = {}
+        end
+    end
 end)

@@ -1,3 +1,5 @@
+SPAWNED_VEHICLES = {}
+
 ---@diagnostic disable: param-type-mismatch
 AddEventHandler("onResourceStart", function(resourceName)
     if resourceName == GetCurrentResourceName() then
@@ -22,11 +24,21 @@ RegisterNetEvent("CR.PV:UpdateSingle", function(vehicleId, vehicleProperties, ne
         vehicleId = GenerateUID()
     end
 
+    if vehicleProperties == nil or type(vehicleProperties) ~= "table" then
+        warn("Attempt to update persistent vehicle " .. vehicleId .. " without proper properties.")
+        return
+    end
+
     Vehicles[vehicleId] = vehicleProperties
 end)
 
 RegisterNetEvent("CR.PV:UpdateMultiple", function(updateArray)
     for vehicleId, vehicleProperties in pairs(updateArray) do
+        if vehicleProperties == nil or type(vehicleProperties) ~= "table" then
+            warn("Attempt to update persistent vehicle " .. vehicleId .. " without proper properties.")
+            return
+        end
+
         Vehicles[vehicleId] = vehicleProperties
     end
 end)
@@ -44,12 +56,18 @@ RegisterNetEvent("CR.PV:ForgetVehicle", function(vehNet)
     end
 end)
 
+RegisterNetEvent("CR.PV:ForgetVehicleById", function(uid)
+    Vehicles[uid] = nil
+    print("Forgot vehicle " .. uid)
+end)
+
 local LastSyncTime = 0
 RegisterNetEvent("CR.PV:GetVehicles", function()
     if GetGameTimer() > (LastSyncTime + 1000) then
         -- Fetch all players
         local Players = {}
         local PlayerVehicles = {}
+        local SpawnedVehicles = {}
 
         for _, playerId in ipairs(GetPlayers()) do
             local playerPed = GetPlayerPed(playerId)
@@ -63,7 +81,7 @@ RegisterNetEvent("CR.PV:GetVehicles", function()
             local coordsJson = vehicleData.matrix.position
             local coords = vector3(coordsJson.x, coordsJson.y, coordsJson.z)
             local nearestPlayer = nil
-            local nearestDist = 500.0
+            local nearestDist = 1000.0
 
             -- Get nearest player to the vehicle
             for playerId, playerCoords in pairs(Players) do
@@ -80,11 +98,14 @@ RegisterNetEvent("CR.PV:GetVehicles", function()
                 PlayerVehicles[nearestPlayer] = PlayerVehicles[nearestPlayer] or {}
                 PlayerVehicles[nearestPlayer][vehicleId] = vehicleData
             end
+
+            -- Check if another player reported the vehicle as spawned
+            if SPAWNED_VEHICLES[vehicleId] == true then
+                SpawnedVehicles[vehicleId] = true
+            end
         end
 
         -- Fetch all spawned persistent vehicles
-        local SpawnedVehicles = {}
-
         for _, vehicle in ipairs(GetAllVehicles()) do
             if Entity(vehicle).state.persistentId then
                 SpawnedVehicles[Entity(vehicle).state.persistentId] = true
@@ -102,6 +123,12 @@ end)
 RegisterNetEvent("CR.PV:MyFiveMId", function()
     local fivemId = GetPlayerIdentifierByType(source, "fivem"):gsub("fivem:", "")
     TriggerClientEvent("CR.PV:SetFivemId", source, fivemId)
+end)
+
+RegisterNetEvent("CR.PV:ISpawned", function(vehicleData)
+    for _, vehicleInfo in pairs(vehicleData) do
+        SPAWNED_VEHICLES[vehicleInfo[1]] = vehicleInfo[2]
+    end
 end)
 
 -- Server sends each client a special PersitentVehicles table tailored to which vehicles are closest to them only
