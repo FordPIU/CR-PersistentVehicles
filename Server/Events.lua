@@ -19,6 +19,7 @@ AddEventHandler("onResourceStop", function(resourceName)
     end
 end)
 
+local UPDATED_VEHICLES = {}
 RegisterNetEvent("CR.PV:UpdateSingle", function(vehicleId, vehicleProperties, needsUID)
     if vehicleId == nil and needsUID == true then
         vehicleId = GenerateUID()
@@ -30,6 +31,7 @@ RegisterNetEvent("CR.PV:UpdateSingle", function(vehicleId, vehicleProperties, ne
     end
 
     Vehicles[vehicleId] = vehicleProperties
+    UPDATED_VEHICLES[vehicleId] = true
 end)
 
 RegisterNetEvent("CR.PV:UpdateMultiple", function(updateArray)
@@ -40,6 +42,7 @@ RegisterNetEvent("CR.PV:UpdateMultiple", function(updateArray)
         end
 
         Vehicles[vehicleId] = vehicleProperties
+        UPDATED_VEHICLES[vehicleId] = true
     end
 end)
 
@@ -100,7 +103,7 @@ RegisterNetEvent("CR.PV:GetVehicles", function()
             end
 
             -- Check if another player reported the vehicle as spawned
-            if SPAWNED_VEHICLES[vehicleId] == true then
+            if UPDATED_VEHICLES[vehicleId] == true then
                 SpawnedVehicles[vehicleId] = true
             end
         end
@@ -117,6 +120,7 @@ RegisterNetEvent("CR.PV:GetVehicles", function()
         end
 
         LastSyncTime = GetGameTimer()
+        UPDATED_VEHICLES = {}
     end
 end)
 
@@ -124,12 +128,5 @@ RegisterNetEvent("CR.PV:MyFiveMId", function()
     local fivemId = GetPlayerIdentifierByType(source, "fivem"):gsub("fivem:", "")
     TriggerClientEvent("CR.PV:SetFivemId", source, fivemId)
 end)
-
-RegisterNetEvent("CR.PV:ISpawned", function(vehicleData)
-    for _, vehicleInfo in pairs(vehicleData) do
-        SPAWNED_VEHICLES[vehicleInfo[1]] = vehicleInfo[2]
-    end
-end)
-
 -- Server sends each client a special PersitentVehicles table tailored to which vehicles are closest to them only
 -- Removes nearest player check on client from being needed

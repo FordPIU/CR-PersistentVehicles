@@ -1,7 +1,6 @@
 local FivemId
 local Vehicles = {}
 local UniqueIds = {}
-local SpawnedIdsPending = {}
 
 local function getUId()
     local isUnique = false
@@ -93,8 +92,6 @@ RegisterNetEvent("CR.PV:ReturnVehicles", function(PlayerVehicles, Players, Spawn
                     SetModelAsNoLongerNeeded(GetEntityModel(vehicle))
                     DeleteEntity(vehicle)
                     print("Removing vehicle " .. persistentId .. " due to distance")
-
-                    SpawnedIdsPending[#SpawnedIdsPending + 1] = { persistentId, false }
                 else
                     -- Vehicles within range, update it
                     local properties = GetVehicleProperties(vehicle)
@@ -145,8 +142,6 @@ RegisterNetEvent("CR.PV:ReturnVehicles", function(PlayerVehicles, Players, Spawn
 
                 print("Created vehicle " .. vehicleId)
 
-                SpawnedIdsPending[#SpawnedIdsPending + 1] = { vehicleId, true }
-
                 SetEntityCoords(newvehicle, vehicleCoords[1], vehicleCoords[2], vehicleCoords[3], false, false, false,
                     false)
                 SetEntityHeading(newvehicle, vehicleData.matrix.heading)
@@ -168,14 +163,4 @@ RegisterNetEvent("CR.PV:ReturnVehicles", function(PlayerVehicles, Players, Spawn
     Loading = false
 
     print("Tracked Vehicles: " .. GetTableLength(PlayerVehicles))
-end)
-
-Citizen.CreateThread(function()
-    while true do
-        Wait(500)
-        if #SpawnedIdsPending > 0 then
-            TriggerServerEvent("CR.PV:ISpawned", SpawnedIdsPending)
-            SpawnedIdsPending = {}
-        end
-    end
 end)
